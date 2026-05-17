@@ -1,0 +1,10 @@
+
+> auditsphere-ai@0.1.0 dev
+> next dev --port 3001
+
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3001
+- Network:       http://100.92.124.28:3001
+- Environments: .env.local, .env
+✓ Ready in 834ms
+[?25h

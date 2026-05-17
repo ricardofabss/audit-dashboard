@@ -1,0 +1,301 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum ProfileStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+  DISABLED
+}
+
+enum CollateralType {
+  EMAS
+  ELEKTRONIK
+}
+
+enum ContractLifecycleEventType {
+  BOOKING_NEW
+  BOOKING_RENEWAL
+  SETTLEMENT
+}
+
+enum ContractLifecycleStatus {
+  ACTIVE
+  OVERDUE_ACTIVE
+  ROLLED_OVER
+  SETTLED
+  CLOSED
+}
+
+model Profile {
+  id          String        @id @default(uuid()) @db.Uuid
+  authUserId  String        @unique @map("auth_user_id") @db.Uuid
+  fullName    String        @map("full_name")
+  email       String
+  emailNorm   String        @unique @map("email_norm")
+  phone       String?
+  avatarUrl   String?       @map("avatar_url")
+  status      ProfileStatus @default(INVITED)
+  branchId    String?       @map("branch_id") @db.Uuid
+  divisionId  String?       @map("division_id") @db.Uuid
+  lastLoginAt DateTime?     @map("last_login_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  deletedAt   DateTime?     @map("deleted_at")
+
+  branch   Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  division Division?      @relation(fields: [divisionId], references: [id], onDelete: SetNull)
+  roles    ProfileRole[]
+  authEvents AuthEvent[]
+
+  @@index([branchId])
+  @@index([divisionId])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("profiles")
+}
+
+model Role {
+  id          String           @id @default(uuid()) @db.Uuid
+  code        String           @unique
+  name        String
+  description String?
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  deletedAt   DateTime?        @map("deleted_at")
+  profiles    ProfileRole[]
+  permissions RolePermission[]
+
+  @@index([deletedAt])
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(uuid()) @db.Uuid
+  code        String           @unique
+  name        String
+  description String?
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  deletedAt   DateTime?        @map("deleted_at")
+  roles       RolePermission[]
+
+  @@index([deletedAt])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String      @id @default(uuid()) @db.Uuid
+  roleId       String      @map("role_id") @db.Uuid
+  permissionId String      @map("permission_id") @db.Uuid
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+  deletedAt    DateTime?   @map("deleted_at")
+  role         Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission  @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([deletedAt])
+  @@map("role_permissions")
+}
+
+model Branch {
+  id          String      @id @default(uuid()) @db.Uuid
+  code        String      @unique
+  name        String
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  deletedAt   DateTime?   @map("deleted_at")
+  divisions   Division[]
+  profiles    Profile[]
+
+  @@index([deletedAt])
+  @@map("branches")
+}
+
+model Division {
+  id          String      @id @default(uuid()) @db.Uuid
+  branchId    String      @map("branch_id") @db.Uuid
+  code        String      @unique
+  name        String
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  deletedAt   DateTime?   @map("deleted_at")
+  branch      Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  profiles    Profile[]
+
+  @@index([branchId])
+  @@index([deletedAt])
+  @@map("divisions")
+}
+
+model ProfileRole {
+  id         String      @id @default(uuid()) @db.Uuid
+  profileId  String      @map("profile_id") @db.Uuid
+  roleId     String      @map("role_id") @db.Uuid
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+  deletedAt  DateTime?   @map("deleted_at")
+  profile    Profile     @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  role       Role        @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, roleId])
+  @@index([deletedAt])
+  @@map("profile_roles")
+}
+
+model AuthEvent {
+  id          String    @id @default(uuid()) @db.Uuid
+  profileId   String?   @map("profile_id") @db.Uuid
+  eventType   String    @map("event_type")
+  ipAddress   String?   @map("ip_address")
+  userAgent   String?   @map("user_agent")
+  metadata    Json?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  profile     Profile?  @relation(fields: [profileId], references: [id], onDelete: SetNull)
+
+  @@index([profileId])
+  @@index([eventType])
+  @@map("auth_events")
+}
+
+model ContractLifecycleEvent {
+  id                   String                     @id @default(uuid()) @db.Uuid
+  businessUnit         String                     @default("GADAI_MAS") @map("business_unit")
+  collateralType       CollateralType             @map("collateral_type")
+  contractNo           String                     @map("contract_no")
+  parentContractNo     String?                    @map("parent_contract_no")
+  rootContractNo       String                     @map("root_contract_no")
+  customerId           String?                    @map("customer_id")
+  outletCode           String                     @map("outlet_code")
+  outletName           String?                    @map("outlet_name")
+  branchName           String?                    @map("branch_name")
+  regionName           String?                    @map("region_name")
+  areaName             String?                    @map("area_name")
+  eventType            ContractLifecycleEventType @map("event_type")
+  eventDate            DateTime                   @map("event_date") @db.Date
+  eventTs              DateTime?                  @map("event_ts")
+  registerDate         DateTime?                  @map("register_date") @db.Date
+  disbursementDate     DateTime?                  @map("disbursement_date") @db.Date
+  dueDate              DateTime?                  @map("due_date") @db.Date
+  settlementDate       DateTime?                  @map("settlement_date") @db.Date
+  tenorDays            Int?                       @map("tenor_days")
+  overdueDays          Int?                       @map("overdue_days")
+  renewalCount         Int?                       @map("renewal_count")
+  isRenewal            Boolean                    @default(false) @map("is_renewal")
+  ltvRatio             Decimal?                   @map("ltv_ratio") @db.Decimal(10, 4)
+  principalInitial     Decimal?                   @map("principal_initial") @db.Decimal(18, 2)
+  loanInitial          Decimal?                   @map("loan_initial") @db.Decimal(18, 2)
+  principalOutstanding Decimal?                   @map("principal_outstanding") @db.Decimal(18, 2)
+  interestOutstanding  Decimal?                   @map("interest_outstanding") @db.Decimal(18, 2)
+  settlementAmount     Decimal?                   @map("settlement_amount") @db.Decimal(18, 2)
+  saleAmount           Decimal?                   @map("sale_amount") @db.Decimal(18, 2)
+  interestIncome       Decimal?                   @map("interest_income") @db.Decimal(18, 2)
+  settlementStatus     String?                    @map("settlement_status")
+  exitStatus           String?                    @map("exit_status")
+  sourceSystem         String                     @map("source_system")
+  sourceSheet          String                     @map("source_sheet")
+  sourceEventKey       String                     @unique @map("source_event_key")
+  createdAt            DateTime                   @default(now()) @map("created_at")
+  updatedAt            DateTime                   @updatedAt @map("updated_at")
+  deletedAt            DateTime?                  @map("deleted_at")
+
+  @@index([contractNo, collateralType])
+  @@index([rootContractNo, collateralType])
+  @@index([outletCode, eventDate])
+  @@index([eventType, eventDate])
+  @@index([deletedAt])
+  @@map("contract_lifecycle_event")
+}
+
+model ContractLifecycleCurrent {
+  id                        String                     @id @default(uuid()) @db.Uuid
+  businessUnit              String                     @default("GADAI_MAS") @map("business_unit")
+  collateralType            CollateralType             @map("collateral_type")
+  rootContractNo            String                     @map("root_contract_no")
+  contractNoLatest          String                     @map("contract_no_latest")
+  customerId                String?                    @map("customer_id")
+  outletCode                String                     @map("outlet_code")
+  outletName                String?                    @map("outlet_name")
+  branchName                String?                    @map("branch_name")
+  regionName                String?                    @map("region_name")
+  areaName                  String?                    @map("area_name")
+  statusCurrent             ContractLifecycleStatus    @map("status_current")
+  lastEventType             ContractLifecycleEventType @map("last_event_type")
+  lastEventDate             DateTime                   @map("last_event_date") @db.Date
+  lastEventTs               DateTime?                  @map("last_event_ts")
+  registerDate              DateTime?                  @map("register_date") @db.Date
+  disbursementDate          DateTime?                  @map("disbursement_date") @db.Date
+  dueDate                   DateTime?                  @map("due_date") @db.Date
+  settlementDate            DateTime?                  @map("settlement_date") @db.Date
+  tenorDays                 Int?                       @map("tenor_days")
+  overdueDaysCurrent        Int?                       @map("overdue_days_current")
+  renewalCountCurrent       Int?                       @map("renewal_count_current")
+  isRenewalCurrent          Boolean                    @default(false) @map("is_renewal_current")
+  ltvRatioCurrent           Decimal?                   @map("ltv_ratio_current") @db.Decimal(10, 4)
+  principalInitialCurrent   Decimal?                   @map("principal_initial_current") @db.Decimal(18, 2)
+  loanInitialCurrent        Decimal?                   @map("loan_initial_current") @db.Decimal(18, 2)
+  principalOutstandingCurrent Decimal?                 @map("principal_outstanding_current") @db.Decimal(18, 2)
+  interestOutstandingCurrent Decimal?                  @map("interest_outstanding_current") @db.Decimal(18, 2)
+  settlementAmountLatest    Decimal?                   @map("settlement_amount_latest") @db.Decimal(18, 2)
+  saleAmountLatest          Decimal?                   @map("sale_amount_latest") @db.Decimal(18, 2)
+  interestIncomeCumulative  Decimal?                   @map("interest_income_cumulative") @db.Decimal(18, 2)
+  settlementStatusLatest    String?                    @map("settlement_status_latest")
+  exitStatusLatest          String?                    @map("exit_status_latest")
+  sourceUpdatedAt           DateTime?                  @map("source_updated_at")
+  createdAt                 DateTime                   @default(now()) @map("created_at")
+  updatedAt                 DateTime                   @updatedAt @map("updated_at")
+  deletedAt                 DateTime?                  @map("deleted_at")
+
+  @@unique([rootContractNo, collateralType])
+  @@index([contractNoLatest, collateralType])
+  @@index([outletCode, lastEventDate])
+  @@index([statusCurrent, lastEventDate])
+  @@index([deletedAt])
+  @@map("contract_lifecycle_current")
+}
+
+model BranchWeeklySnapshot {
+  id                    String         @id @default(uuid()) @db.Uuid
+  businessUnit          String         @default("GADAI_MAS") @map("business_unit")
+  collateralType        CollateralType @map("collateral_type")
+  periodYear            Int            @map("period_year")
+  periodMonth           Int            @map("period_month")
+  weekIndex             Int            @map("week_index")
+  periodStart           DateTime       @map("period_start") @db.Date
+  periodEnd             DateTime       @map("period_end") @db.Date
+  publishedDate         DateTime       @map("published_date") @db.Date
+  outletCode            String         @map("outlet_code")
+  outletName            String?        @map("outlet_name")
+  branchName            String?        @map("branch_name")
+  regionName            String?        @map("region_name")
+  areaName              String?        @map("area_name")
+  bookingEventCount     Int            @default(0) @map("booking_event_count")
+  newBookingCount       Int            @default(0) @map("new_booking_count")
+  renewalBookingCount   Int            @default(0) @map("renewal_booking_count")
+  bookingAmount         Decimal?       @map("booking_amount") @db.Decimal(18, 2)
+  ovdBookingCount       Int            @default(0) @map("ovd_booking_count")
+  avgLtv                Decimal?       @map("avg_ltv") @db.Decimal(10, 4)
+  settlementCount       Int            @default(0) @map("settlement_count")
+  settlementAmount      Decimal?       @map("settlement_amount") @db.Decimal(18, 2)
+  lateSettlementCount   Int            @default(0) @map("late_settlement_count")
+  interestIncome        Decimal?       @map("interest_income") @db.Decimal(18, 2)
+  saleAmount            Decimal?       @map("sale_amount") @db.Decimal(18, 2)
+  sourceRunAt           DateTime       @default(now()) @map("source_run_at")
+  createdAt             DateTime       @default(now()) @map("created_at")
+  updatedAt             DateTime       @updatedAt @map("updated_at")
+  deletedAt             DateTime?      @map("deleted_at")
+
+  @@unique([collateralType, outletCode, periodStart, periodEnd])
+  @@index([periodYear, periodMonth, weekIndex])
+  @@index([publishedDate, outletCode])
+  @@index([deletedAt])
+  @@map("branch_weekly_snapshot")
+}

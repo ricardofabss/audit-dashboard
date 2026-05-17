@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  --background: #081028;
+  --panel: #0b1739;
+  --panel-2: #111c44;
+  --line: rgba(255, 255, 255, 0.1);
+  --muted: #93a4bf;
+  --text: #eff6ff;
+  --cyan: #22d3ee;
+  --emerald: #34d399;
+  --amber: #fbbf24;
+  --red: #fb7185;
+  --indigo: #818cf8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(34, 211, 238, 0.12), transparent 32rem),
+    radial-gradient(circle at top right, rgba(129, 140, 248, 0.1), transparent 28rem),
+    var(--background);
+  color: var(--text);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(34, 211, 238, 0.25);
+}
+
+.glass-card {
+  background: linear-gradient(180deg, rgba(17, 28, 68, 0.86), rgba(11, 23, 57, 0.72));
+  border: 1px solid var(--line);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.26);
+  backdrop-filter: blur(18px);
+}
+
+.hairline {
+  border-color: var(--line);
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.28);
+  border-radius: 999px;
+}
