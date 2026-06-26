@@ -76,11 +76,11 @@ export default function BranchRiskPage() {
   }, [selected, data]);
 
   const handleCompare = () => {
-    alert(`Regional Branch Comparison:\n\nActive Branch: ${selected ? selected.name : "None selected"}\nRegional Average Risk Score: 64\nBranch Risk Score: ${selected ? selected.score : "N/A"}\nStatus: ${selected ? (selected.score > 64 ? "Above Regional Average (Needs Review)" : "Below Regional Average (Healthy)") : "Select a branch to compare"}`);
+    alert(`Regional Branch Comparison:\n\nActive Branch: ${selected ? selected.branchName : "None selected"}\nRegional Average Risk Score: 64\nBranch Risk Score: ${selected ? selected.totalScore : "N/A"}\nStatus: ${selected ? (selected.totalScore > 64 ? "Above Regional Average (Needs Review)" : "Below Regional Average (Healthy)") : "Select a branch to compare"}`);
   };
 
   const handleDrillDown = () => {
-    alert(`Drilling down into branch ${selected ? selected.name : "details"}:\n\n- Active Anomalies: ${selected ? selected.anomalies : 0}\n- High Risk Customers: ${selected ? selected.highRiskCust : 0}\n- Active Portfolio: ${selected ? selected.portfolio : "N/A"}`);
+    alert(`Drilling down into branch ${selected ? selected.branchName : "details"}:\n\n- Active Anomalies: ${selected ? selected.anomalyCount : 0}\n- High Risk Customers: ${selected ? selected.highRiskCustomerCount : 0}\n- Customers: ${selected ? selected.customerCount : "N/A"}`);
   };
 
   return (
