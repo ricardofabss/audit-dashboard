@@ -158,8 +158,8 @@ const evaluateA03: RuleFunction = (transactions, rule) => {
     if (status.toLowerCase() !== "top up") continue;
 
     // Find parent transaction
-    const parentTx = transactions.find(t => t.contractNo === tx.parentContractNo || t.contractNo === tx.rootContractNo);
-    const startStr = parentTx?.disbursementDate || tx.registerDate || tx.disbursementDate;
+    const parentTx = transactions.find(t => t.contractNo === tx.rootContractNo);
+    const startStr = parentTx?.disbursementDate || tx.eventDate || tx.disbursementDate;
     if (!startStr) continue;
 
     const start = new Date(startStr);
@@ -175,7 +175,7 @@ const evaluateA03: RuleFunction = (transactions, rule) => {
         entityId: tx.customerId,
         entityName: tx.customerName,
         riskScore: Math.min(100, rule.riskWeight * (diffDays < 15 ? 2.0 : 1.5)),
-        metadata: { agingDays: diffDays, statusPerpanjangan: status, contractNo: tx.contractNo, parentContractNo: tx.parentContractNo },
+        metadata: { agingDays: diffDays, statusPerpanjangan: status, contractNo: tx.contractNo, parentContractNo: tx.rootContractNo },
         description: `${tx.customerName}: renewed contract ${tx.contractNo} (Top Up) with aging of ${diffDays} days (outside 15-135 days range)`,
       });
     }
@@ -199,7 +199,7 @@ const evaluateA04: RuleFunction = (transactions, rule) => {
     if (currentLtv <= 95) continue;
 
     // Find parent transaction LTV
-    const parentTx = transactions.find(t => t.contractNo === tx.parentContractNo || t.contractNo === tx.rootContractNo);
+    const parentTx = transactions.find(t => t.contractNo === tx.rootContractNo);
     if (!parentTx) continue;
 
     const prevLtv = parentTx.ltvRatio > 1.5 ? parentTx.ltvRatio : parentTx.ltvRatio * 100;

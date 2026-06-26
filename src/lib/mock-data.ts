@@ -116,10 +116,10 @@ export const complianceFrameworks = [
 ];
 
 export const documents = [
-  { name: "Q3_APAC_Working_Papers.zip", type: "Evidence Pack", version: "v7", owner: "Sarah Jenkins", modified: "Today" },
-  { name: "Vendor_Master_Extract.xlsx", type: "Data Extract", version: "v3", owner: "Finance Ops", modified: "Yesterday" },
-  { name: "Investigation_Interview_Notes.pdf", type: "Confidential", version: "v2", owner: "Fraud Unit", modified: "2 days ago" },
-  { name: "SOX_Retest_Report.docx", type: "Report", version: "v4", owner: "Compliance", modified: "4 days ago" },
+  { id: "doc-1", name: "Q3_APAC_Working_Papers.zip", type: "Evidence Pack", version: "v7", owner: "Sarah Jenkins", modified: "Today" },
+  { id: "doc-2", name: "Vendor_Master_Extract.xlsx", type: "Data Extract", version: "v3", owner: "Finance Ops", modified: "Yesterday" },
+  { id: "doc-3", name: "Investigation_Interview_Notes.pdf", type: "Confidential", version: "v2", owner: "Fraud Unit", modified: "2 days ago" },
+  { id: "doc-4", name: "SOX_Retest_Report.docx", type: "Report", version: "v4", owner: "Compliance", modified: "4 days ago" },
 ];
 
 export const aiRecommendations = [

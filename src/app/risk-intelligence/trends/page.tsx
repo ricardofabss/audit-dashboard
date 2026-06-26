@@ -166,7 +166,7 @@ export default function RiskTrendsPage() {
   };
 
   const handlePeriodCompare = () => {
-    alert(`Period Comparison Projections:\n\n- Previous Quarter Average: ${periodComparison.lastQuarter.riskScore}\n- Current Quarter Average: ${periodComparison.thisQuarter.riskScore}\n- Velocity Variance: ${((periodComparison.thisQuarter.anomalyCount - periodComparison.lastQuarter.anomalyCount) / periodComparison.lastQuarter.anomalyCount * 100).toFixed(1)}%`);
+    alert(`Period Comparison Projections:\n\n- Previous Quarter Average: ${periodComparison.lastQuarter.branchAvg}\n- Current Quarter Average: ${periodComparison.thisQuarter.branchAvg}\n- Velocity Variance: ${((periodComparison.thisQuarter.anomalyCount - periodComparison.lastQuarter.anomalyCount) / periodComparison.lastQuarter.anomalyCount * 100).toFixed(1)}%`);
   };
 
   return (
