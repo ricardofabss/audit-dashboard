@@ -214,6 +214,7 @@ export async function GET(request: NextRequest) {
         outletName: e.outletName || `Outlet ${e.outletCode}`,
         branchName: e.branchName || `Cabang ${e.outletCode}`,
         regionName: e.regionName || undefined,
+        areaName: e.areaName || undefined,
         timezone: tzSuffix,
         officerId: "OFF-DEFAULT",
         officerName: "Petugas Penilai",
