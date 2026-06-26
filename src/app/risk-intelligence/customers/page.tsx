@@ -49,8 +49,8 @@ export default function CustomerRiskPage() {
 
   const handleGenerateReport = () => {
     const element = document.createElement("a");
-    const label = selected ? selected.name : "Active_Customer";
-    const content = `AuditSphere AI - Customer Risk Ranking Profile\n============================================\nCustomer: ${label}\nRisk Score: ${selected ? selected.score : "N/A"}\nRisk Level: ${selected ? selected.level : "N/A"}\nGenerated: ${new Date().toLocaleString()}`;
+    const label = selected ? selected.customerName : "Active_Customer";
+    const content = `AuditSphere AI - Customer Risk Ranking Profile\n============================================\nCustomer: ${label}\nRisk Score: ${selected ? selected.totalScore : "N/A"}\nRisk Level: ${selected ? selected.riskLevel : "N/A"}\nGenerated: ${new Date().toLocaleString()}`;
     const file = new Blob([content], { type: "text/plain" });
     element.href = URL.createObjectURL(file);
     element.download = `Customer_Risk_Report_${label.replace(/\s+/g, "_")}.txt`;
