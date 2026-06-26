@@ -1,16 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { AIInsightPanel } from "@/components/layout/ai-insight-panel";
 import { CommandPalette } from "@/components/layout/command-palette";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
+import { useBusinessUnitStore } from "@/hooks/use-business-unit";
+import { useAuditStore } from "@/hooks/use-audit-store";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [aiOpen, setAiOpen] = useState(false);
+
+  useEffect(() => {
+    useBusinessUnitStore.persist.rehydrate();
+    useAuditStore.getState().fetchInitialData();
+  }, []);
   const publicOnlyLayout = ["/login", "/403", "/unauthorized"].includes(pathname);
 
   if (publicOnlyLayout) return <>{children}</>;

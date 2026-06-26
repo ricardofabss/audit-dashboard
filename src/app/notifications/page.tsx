@@ -1,9 +1,12 @@
-import { activities } from "@/lib/mock-data";
+"use client";
+
+import { useAuditStore } from "@/hooks/use-audit-store";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function NotificationsPage() {
+  const { activities } = useAuditStore();
   return (
     <div className="space-y-4 pb-10">
       <PageHeader title="Notifications" subtitle="Alerts and workflow updates across audits, cases, and remediation actions." />

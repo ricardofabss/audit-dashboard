@@ -1,8 +1,10 @@
 import {
+  Activity,
   AlertTriangle,
   Archive,
   Bell,
   Bot,
+  Building2,
   CalendarDays,
   CheckCircle2,
   ClipboardCheck,
@@ -14,7 +16,10 @@ import {
   Settings,
   ShieldAlert,
   ShieldCheck,
+  TrendingUp,
+  UserCog,
   Users,
+  Zap,
 } from "lucide-react";
 import type { ComponentType } from "react";
 import type { PermissionCode } from "@/types/auth";
@@ -35,6 +40,17 @@ export const navGroups = [
       { label: "Audit Execution", href: "/execution", icon: ClipboardCheck },
       { label: "Findings", href: "/findings", icon: AlertTriangle, permission: "findings.read" },
       { label: "Follow-up Monitoring", href: "/follow-up", icon: CheckCircle2 },
+    ] as NavItem[],
+  },
+  {
+    label: "Risk Intelligence",
+    items: [
+      { label: "Risk Dashboard", href: "/risk-intelligence", icon: Activity },
+      { label: "Anomaly Monitor", href: "/risk-intelligence/anomalies", icon: Zap },
+      { label: "Customer Risk", href: "/risk-intelligence/customers", icon: Users },
+      { label: "Branch Risk", href: "/risk-intelligence/branches", icon: Building2 },
+      { label: "Officer Risk", href: "/risk-intelligence/officers", icon: UserCog },
+      { label: "Risk Trends", href: "/risk-intelligence/trends", icon: TrendingUp },
     ] as NavItem[],
   },
   {

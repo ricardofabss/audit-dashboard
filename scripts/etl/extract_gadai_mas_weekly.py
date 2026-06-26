@@ -133,7 +133,8 @@ def collateral_type_from_sheet(sheet_name: str) -> str:
 
 def row_getter(header_map: dict[str, int]):
     def _get(row: tuple[Any, ...], name: str) -> Any:
-        idx = header_map.get(name)
+        clean_name = re.sub(r"[\s_]+", "", name).lower() if name else ""
+        idx = header_map.get(clean_name)
         if idx is None:
             return None
         if idx >= len(row):
@@ -160,7 +161,11 @@ def extract_booking_events(path: Path, start: dt.date, end: dt.date) -> list[dic
         header = next(rows, None)
         if not header:
             continue
-        header_map = {str(col).strip(): idx for idx, col in enumerate(header) if col is not None}
+        header_map = {}
+        for idx, col in enumerate(header):
+            if col is not None:
+                clean_name = re.sub(r"[\s_]+", "", str(col)).lower()
+                header_map[clean_name] = idx
         get = row_getter(header_map)
         collateral_type = collateral_type_from_sheet(sheet_name)
 
@@ -170,8 +175,10 @@ def extract_booking_events(path: Path, start: dt.date, end: dt.date) -> list[dic
                 continue
 
             disbursement_date = parse_date(get(row, "tglCair"))
+            if not disbursement_date:
+                continue
             register_date = parse_date(get(row, "tglRegister"))
-            event_date = disbursement_date or register_date
+            event_date = disbursement_date
             if not in_range(event_date, start, end):
                 continue
 
@@ -183,6 +190,10 @@ def extract_booking_events(path: Path, start: dt.date, end: dt.date) -> list[dic
                 f"BOOKING|{sheet_name}|{contract_no}|{event_date.isoformat()}|{row_idx}"
             )
 
+            cif = safe_str(get(row, "cif"))
+            cust_name = safe_str(get_any(get, row, ["namaNasabah", "namaCustomer", "nasabah", "customerName", "nama"]))
+            cust_id_val = f"{cif} | {cust_name}" if cif and cust_name else cif
+
             events.append(
                 {
                     "businessUnit": "GADAI_MAS",
@@ -190,7 +201,7 @@ def extract_booking_events(path: Path, start: dt.date, end: dt.date) -> list[dic
                     "contractNo": contract_no,
                     "parentContractNo": parent_contract_no,
                     "rootContractNo": parent_contract_no or contract_no,
-                    "customerId": safe_str(get(row, "cif")),
+                    "customerId": cust_id_val,
                     "outletCode": safe_str(get(row, "kodeOutlet")),
                     "outletName": safe_str(get(row, "namaOutlet")),
                     "branchName": safe_str(get(row, "namaCabang")),
@@ -203,9 +214,9 @@ def extract_booking_events(path: Path, start: dt.date, end: dt.date) -> list[dic
                     "disbursementDate": disbursement_date.isoformat() if disbursement_date else None,
                     "dueDate": None,
                     "settlementDate": parse_date(
-                        get_any(get, row, ["tanggalPelunasan", "tglPelunasan"])
+                        get_any(get, row, ["tanggalPelunasan", "tglPelunasan", "tglPembayaran", "Tgl Pembayaran"])
                     ).isoformat()
-                    if parse_date(get_any(get, row, ["tanggalPelunasan", "tglPelunasan"]))
+                    if parse_date(get_any(get, row, ["tanggalPelunasan", "tglPelunasan", "tglPembayaran", "Tgl Pembayaran"]))
                     else None,
                     "tenorDays": parse_int(get(row, "tenor")),
                     "overdueDays": parse_int(get(row, "ovd")),
@@ -219,7 +230,7 @@ def extract_booking_events(path: Path, start: dt.date, end: dt.date) -> list[dic
                     "settlementAmount": None,
                     "saleAmount": None,
                     "interestIncome": None,
-                    "settlementStatus": None,
+                    "settlementStatus": safe_str(get(row, "statusPerpanjangan")),
                     "exitStatus": None,
                     "sourceSystem": "BOOKING",
                     "sourceSheet": sheet_name,
@@ -238,7 +249,11 @@ def extract_settlement_events(path: Path, start: dt.date, end: dt.date) -> list[
         header = next(rows, None)
         if not header:
             continue
-        header_map = {str(col).strip(): idx for idx, col in enumerate(header) if col is not None}
+        header_map = {}
+        for idx, col in enumerate(header):
+            if col is not None:
+                clean_name = re.sub(r"[\s_]+", "", str(col)).lower()
+                header_map[clean_name] = idx
         get = row_getter(header_map)
         collateral_type = collateral_type_from_sheet(sheet_name)
 
@@ -247,7 +262,7 @@ def extract_settlement_events(path: Path, start: dt.date, end: dt.date) -> list[
             if not contract_no:
                 continue
 
-            settlement_date = parse_date(get_any(get, row, ["tanggalPelunasan", "tglPelunasan"]))
+            settlement_date = parse_date(get_any(get, row, ["tanggalPelunasan", "tglPelunasan", "tglPembayaran", "Tgl Pembayaran"]))
             if not in_range(settlement_date, start, end):
                 continue
 
@@ -257,6 +272,10 @@ def extract_settlement_events(path: Path, start: dt.date, end: dt.date) -> list[
             disbursement_date = parse_date(get(row, "tglCair"))
             due_date = parse_date(get(row, "tglJatuhTempo"))
 
+            cif = safe_str(get(row, "cif"))
+            cust_name = safe_str(get_any(get, row, ["namaNasabah", "namaCustomer", "nasabah", "customerName", "nama"]))
+            cust_id_val = f"{cif} | {cust_name}" if cif and cust_name else cif
+
             events.append(
                 {
                     "businessUnit": "GADAI_MAS",
@@ -264,7 +283,7 @@ def extract_settlement_events(path: Path, start: dt.date, end: dt.date) -> list[
                     "contractNo": contract_no,
                     "parentContractNo": None,
                     "rootContractNo": contract_no,
-                    "customerId": safe_str(get(row, "cif")),
+                    "customerId": cust_id_val,
                     "outletCode": safe_str(get(row, "kodeOutlet")),
                     "outletName": safe_str(get(row, "namaOutlet")),
                     "branchName": safe_str(get(row, "namaCabang")),

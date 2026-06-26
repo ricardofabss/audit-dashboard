@@ -91,6 +91,31 @@ async function getIdentityFromSupabaseApi(
 }
 
 export async function getServerSessionIdentity(): Promise<SessionIdentity | null> {
+  if (process.env.NODE_ENV === "development") {
+    return {
+      userId: "dev-bypass-user-id",
+      email: "dev@auditsphere.ai",
+      profileId: "dev-bypass-profile-id",
+      roles: ["OWNER"],
+      permissions: [
+        "dashboard.read",
+        "audit.read",
+        "audit.execute",
+        "findings.read",
+        "findings.manage",
+        "wbs.read",
+        "investigation.read",
+        "risk.read",
+        "compliance.read",
+        "followup.read",
+        "users.manage",
+        "settings.manage",
+      ],
+      branchId: null,
+      divisionId: null,
+    };
+  }
+
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },

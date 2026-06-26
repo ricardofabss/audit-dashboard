@@ -299,3 +299,103 @@ model BranchWeeklySnapshot {
   @@index([deletedAt])
   @@map("branch_weekly_snapshot")
 }
+
+model AuditProject {
+  id        String   @id @default(uuid()) @db.Uuid
+  auditCode String   @unique @map("audit_code")
+  name      String
+  branch    String
+  lead      String
+  status    String
+  progress  Int      @default(0)
+  risk      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("audit_projects")
+}
+
+model AuditFinding {
+  id        String   @id @default(uuid()) @db.Uuid
+  findingId String   @unique @map("finding_id")
+  title     String
+  branch    String
+  owner     String
+  severity  String
+  status    String
+  sla       String
+  progress  Int      @default(0)
+  risk      Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("audit_findings")
+}
+
+model WbsCase {
+  id        String   @id @default(uuid()) @db.Uuid
+  caseId    String   @unique @map("case_id")
+  title     String
+  category  String
+  score     Int      @default(0)
+  status    String
+  reporter  String
+  age       String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("wbs_cases")
+}
+
+model RiskRegister {
+  id         String   @id @default(uuid()) @db.Uuid
+  riskId     String   @unique @map("risk_id")
+  name       String
+  category   String
+  likelihood Int      @default(0)
+  impact     Int      @default(0)
+  owner      String
+  mitigation Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("risk_register")
+}
+
+model AuditActivity {
+  id        String   @id @default(uuid()) @db.Uuid
+  title     String
+  detail    String
+  time      String
+  tone      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("audit_activities")
+}
+
+model AuditDocument {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  type      String
+  version   String
+  owner     String
+  modified  String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("audit_documents")
+}
+
+model MonthlyReport {
+  id          String    @id @default(uuid()) @db.Uuid
+  reportMonth String    @map("report_month") // e.g., "2026-06"
+  buCode      String    @map("bu_code")      // e.g., "PG-GMN"
+  status      String    // "Pending", "Submitted", "In Review", "Approved"
+  submitter   String?   
+  submittedAt DateTime? @map("submitted_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@unique([reportMonth, buCode])
+  @@map("monthly_reports")
+}

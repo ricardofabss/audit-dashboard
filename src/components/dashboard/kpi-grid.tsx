@@ -1,5 +1,7 @@
+"use client";
+
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
-import { executiveMetrics } from "@/lib/mock-data";
+import { useAuditStore } from "@/hooks/use-audit-store";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -12,6 +14,19 @@ const toneClass = {
 };
 
 export function KPIGrid() {
+  const { audits, findings } = useAuditStore();
+  
+  const activeAuditsCount = audits.filter((a) => a.status === "In Progress" || a.status === "Fieldwork").length;
+  const openFindingsCount = findings.filter((f) => f.status !== "Resolved").length;
+  const criticalFindingsCount = findings.filter((f) => f.severity === "Critical" && f.status !== "Resolved").length;
+
+  const executiveMetrics = [
+    { label: "Active Audits", value: String(activeAuditsCount), change: `Total: ${audits.length} planned`, tone: "cyan" as const },
+    { label: "Open Findings", value: String(openFindingsCount), change: `${findings.filter((f) => f.status === "Open").length} unassigned`, tone: "amber" as const },
+    { label: "Critical Findings", value: String(criticalFindingsCount), change: `${findings.filter((f) => f.status === "Escalated").length} escalated`, tone: "red" as const },
+    { label: "Compliance Score", value: "91%", change: "+4.2 pts this quarter", tone: "emerald" as const },
+  ];
+
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
       {executiveMetrics.map((metric) => {

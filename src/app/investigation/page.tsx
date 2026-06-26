@@ -1,10 +1,13 @@
-import { activities, wbsCases } from "@/lib/mock-data";
+"use client";
+
+import { useAuditStore } from "@/hooks/use-audit-store";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function InvestigationPage() {
-  const caseData = wbsCases[0];
+  const { wbsCases, activities } = useAuditStore();
+  const caseData = wbsCases.length > 0 ? wbsCases[0] : { id: "No Case", title: "No active cases found", category: "-", reporter: "-" };
   return (
     <div className="space-y-4 pb-10">
       <PageHeader title="Fraud Investigation Workspace" subtitle="Case management, evidence review, timeline analysis, and decision workflow." actions={[{ label: "Escalate to Legal", variant: "danger" }, { label: "Update Case" }]} />

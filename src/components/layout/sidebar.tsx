@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -8,13 +9,45 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { navGroups, productIcon as ProductIcon } from "./navigation";
 import { useAuth } from "@/hooks/use-auth";
+import { useTranslation } from "@/hooks/use-translation";
+import { useActiveBU } from "@/hooks/use-business-unit";
+
+const navTranslationKeys: Record<string, string> = {
+  "Command Center": "nav.commandCenter",
+  "Risk Intelligence": "nav.riskIntelligence",
+  "Intelligence": "nav.intelligence",
+  "Workspace": "nav.workspace",
+  "Dashboard": "nav.dashboard",
+  "Audit Planning": "nav.planning",
+  "Audit Execution": "nav.execution",
+  "Findings": "nav.findings",
+  "Follow-up Monitoring": "nav.followup",
+  "Risk Dashboard": "nav.riskDashboard",
+  "Anomaly Monitor": "nav.anomalyMonitor",
+  "Customer Risk": "nav.customerRisk",
+  "Branch Risk": "nav.branchRisk",
+  "Officer Risk": "nav.officerRisk",
+  "Risk Trends": "nav.riskTrends",
+  "WBS": "nav.wbs",
+  "Investigation": "nav.investigation",
+  "Risk Management": "nav.risk",
+  "Compliance": "nav.compliance",
+  "Approval Workflow": "nav.approvals",
+  "Document Center": "nav.documents",
+  "AI Assistant": "nav.ai",
+  "Notifications": "nav.notifications",
+  "User Management": "nav.users",
+  "Settings": "nav.settings",
+};
 
 export function Sidebar({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   const pathname = usePathname();
   const { identity } = useAuth();
+  const { t } = useTranslation();
   const permissions = identity?.permissions ?? [];
   const roles = identity?.roles ?? [];
   const hasBypassRole = roles.includes("OWNER") || roles.includes("ADMIN");
+  const activeBU = useActiveBU();
 
   return (
     <motion.aside
@@ -37,36 +70,66 @@ export function Sidebar({ open, onToggle }: { open: boolean; onToggle: () => voi
       </div>
 
       <nav className="scrollbar-thin flex-1 space-y-6 overflow-y-auto px-3 py-5">
-        {navGroups.map((group) => (
-          <div key={group.label}>
-            {open ? <div className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{group.label}</div> : null}
-            <div className="space-y-1">
-              {group.items.map((item) => {
-                if (item.permission && !hasBypassRole && !permissions.includes(item.permission)) {
-                  return null;
-                }
-                const active = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "group relative flex h-10 items-center rounded-lg px-3 text-sm transition",
-                      active ? "bg-cyan-300/10 text-cyan-200" : "text-slate-400 hover:bg-white/[0.07] hover:text-slate-100",
-                      !open && "justify-center px-0",
-                    )}
-                    aria-label={item.label}
-                    title={!open ? item.label : undefined}
-                  >
-                    {active ? <span className="absolute left-0 h-5 w-0.5 rounded-full bg-cyan-300" /> : null}
-                    <item.icon className="h-4 w-4 shrink-0" />
-                    {open ? <span className="ml-3 truncate">{item.label}</span> : null}
-                  </Link>
-                );
-              })}
+        {navGroups.map((group) => {
+          const translatedGroup = t((navTranslationKeys[group.label] || group.label) as any);
+          const isRiskIntelGroup = group.label === "Risk Intelligence";
+          const groupAccentColor = (isRiskIntelGroup && activeBU) ? activeBU.color : "#22d3ee";
+
+          return (
+            <div key={group.label}>
+              {open ? (
+                <div className="mb-2 px-3 flex items-center justify-between">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{translatedGroup}</div>
+                  {isRiskIntelGroup && activeBU && (
+                    <span
+                      className="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase shrink-0"
+                      style={{ backgroundColor: activeBU.color + "20", color: activeBU.color }}
+                    >
+                      {activeBU.shortName}
+                    </span>
+                  )}
+                </div>
+              ) : null}
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  if (item.permission && !hasBypassRole && !permissions.includes(item.permission)) {
+                    return null;
+                  }
+                  const active = pathname === item.href;
+                  const translatedItem = t((navTranslationKeys[item.label] || item.label) as any);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "group relative flex h-10 items-center rounded-lg px-3 text-sm transition",
+                        active ? "text-slate-100" : "text-slate-400 hover:bg-white/[0.07] hover:text-slate-100",
+                        !open && "justify-center px-0",
+                      )}
+                      style={{
+                        backgroundColor: active ? `${groupAccentColor}15` : undefined,
+                        color: active ? groupAccentColor : undefined,
+                      }}
+                      aria-label={translatedItem}
+                      title={!open ? translatedItem : undefined}
+                    >
+                      {active ? (
+                        <span
+                          className="absolute left-0 h-5 w-0.5 rounded-full"
+                          style={{ backgroundColor: groupAccentColor }}
+                        />
+                      ) : null}
+                      <span style={{ color: active ? groupAccentColor : undefined }}>
+                        <item.icon className="h-4 w-4 shrink-0" />
+                      </span>
+                      {open ? <span className="ml-3 truncate">{translatedItem}</span> : null}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       <Button

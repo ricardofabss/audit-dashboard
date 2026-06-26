@@ -1,0 +1,275 @@
+
+============================================================
+FILE: Booking.xlsx (8.9 MB)
+============================================================
+
+  Sheet: 'Sheet1' - 78 columns
+    [0] 1
+    [1] Kode Produk
+    [2] Kode Outlet
+    [3] Nama Outlet
+    [4] Nama Cabang
+    [5] Nama Wilayah
+    [6] No SBG
+    [7] No SBG Lama
+    [8] No Kwitansi Perpanjangan
+    [9] No Kwitansi Sebelumnya
+    [10] CIF
+    [11] Nama Customer
+    [12] No KTP
+    [13] Tempat Lahir
+    [14] Tanggal Lahir
+    [15] Alamat KTP
+    [16] Kelurahan
+    [17] Kecamatan
+    [18] Kabupaten
+    [19] Provinsi
+    [20] Kodepos
+    [21] Alamat Domisili
+    [22] Kelurahan Domisili
+    [23] Kecamatan Domisili
+    [24] Kabupaten Domisili
+    [25] Provinsi Domisili
+    [26] Kodepos Domisili
+    [27] Tgl Register
+    [28] Tgl Cair
+    [29] Tgl Pelunasan
+    [30] Tenor
+    [31] OVD
+    [32] Rate Flat
+    [33] LTV
+    [34] Pokok Awal
+    [35] Pinjam Awal
+    [36] Saldo Pokok
+    [37] Saldo Bunga
+    [38] Saldo Pinjam
+    [39] Biaya Admin
+    [40] Biaya Admin Awal
+    [41] Diskon Admin
+    [42] Taksir1
+    [43] Karat1
+    [44] Berat1
+    [45] Taksir
+    [46] Karat
+    [47] Berat
+    [48] STLE
+    [49] Tujuan Transaksi
+    [50] Sektor Ekonomi
+    [51] Asal Aplikasi
+    [52] Kode Referensi Aplikasi
+    [53] Nama Referensi Aplikasi
+    [54] Nama CGC Aplikasi
+    [55] Nama Asal Jaminan
+    [56] Referensi Nasabah
+    [57] Kode Referensi Nasabah
+    [58] Nama Referensi Nasabah
+    [59] CIF Referensi Nasabah
+    [60] Nama CGC Referensi Nasabah
+    [61] Pokok Sebelumnya
+    [62] OVD Lama
+    [63] Perpanjangan Ke
+    [64] Status Perpanjangan
+    [65] Jenis Pembayaran
+    [66] Kode Mitra
+    [67] Rate Pendana
+    [68] Bank Pendana
+    [69] Porsi Bank
+    [70] Nama Penaksir
+    [71] Tanggal Jam
+    [72] Foto
+    [73] Approval Final
+    [74] Status Aplikasi
+    [75] Foto Nasabah
+    [76] Time Foto Nasabah
+    [77] Nama Program
+  --- Sample row ---
+    1 = 3113903
+    Kode Produk = 15-13.359
+    Kode Outlet = 368
+    Nama Outlet = MAS KOWO
+    Nama Cabang = 359-MAS TENTE
+    Nama Wilayah = GADAI MAS NUSANTARA
+    No SBG = 001368012600001
+    No SBG Lama = 001368122501631
+    No Kwitansi Perpanjangan = 001368012600001
+    No Kwitansi Sebelumnya = 
+    CIF = 352.0.000921
+    Nama Customer = SRI RAHMAWATI
+    No KTP = '9171014702920004
+    Tempat Lahir = KOWO
+    Tanggal Lahir = 1992-02-07
+    Alamat KTP = KOWO
+    Kelurahan = Kowo
+    Kecamatan = Sape
+    Kabupaten = Kab. Bima-Kabupaten
+    Provinsi = Nusa Tenggara Barat 
+    Kodepos = 84182
+    Alamat Domisili = KOWO
+    Kelurahan Domisili = Kowo
+    Kecamatan Domisili = Sape
+    Kabupaten Domisili = Kab. Bima-Kabupaten
+    Provinsi Domisili = Nusa Tenggara Barat 
+    Kodepos Domisili = 84182
+    Tgl Register = 2022-12-27
+    Tgl Cair = 2026-01-02
+    Tgl Pelunasan = 2026-04-17
+    Tenor = 120
+    OVD = -14
+    Rate Flat = 1.85
+    LTV = 90.89
+    Pokok Awal = 204500
+    Pinjam Awal = 3598437
+    Saldo Pokok = 3350500
+    Saldo Bunga = 247937
+    Saldo Pinjam = 3598437
+    Biaya Admin = 46000
+    Biaya Admin Awal = 46000
+    Diskon Admin = 0
+    Taksir1 = 3686500
+    Karat1 = 20
+    Berat1 = 2.02
+    Taksir = 3686500
+    Karat = 20
+    Berat = 2.02
+    STLE = 2190000
+    Tujuan Transaksi = KONSUMSI
+    Asal Aplikasi = Walk In
+    Kode Referensi Aplikasi = 
+    Nama Referensi Aplikasi = 
+    Nama Asal Jaminan = NON-TO
+    Pokok Sebelumnya = 3146000
+    OVD Lama = -92
+    Perpanjangan Ke = 1
+    Status Perpanjangan = Top Up
+    Jenis Pembayaran = TUNAI
+    Tanggal Jam = 2026-01-02 06:54:49
+    Foto = https://s3.nevaobjects.id/core/customer/taksiran-emas/2025-12-06-08-31-220b7f06a
+    Approval Final = KA UNIT
+    Status Aplikasi = Extend
+    Foto Nasabah = https://s3.nevaobjects.id/core/foto-barang-bukti-pencairan-gadai/2026-01-02-06-5
+    Time Foto Nasabah = 2026-01-02 06:54:48
+    Nama Program = Non Program
+
+============================================================
+FILE: Pelunasan.xlsx (10.4 MB)
+============================================================
+
+  Sheet: 'Sheet1' - 60 columns
+    [0] 1
+    [1] Kode Produk
+    [2] Kode Outlet
+    [3] Nama Outlet
+    [4] Nama Cabang
+    [5] Nama Wilayah
+    [6] No SBG
+    [7] No Kwitansi Perpanjangan
+    [8] No SBG Lama
+    [9] No Kwitansi Sebelumnya
+    [10] Nama Customer
+    [11] CIF
+    [12] No KTP
+    [13] HP
+    [14] Tempat Lahir
+    [15] Tanggal Lahir
+    [16] Alamat KTP
+    [17] RT
+    [18] RW
+    [19] Kelurahan
+    [20] Kecamatan
+    [21] Kabupaten
+    [22] Provinsi
+    [23] Kodepos
+    [24] Alamat Domisili
+    [25] RT Domisili
+    [26] RW Domisili
+    [27] Kelurahan Domisili
+    [28] Kecamatan Domisili
+    [29] Kabupaten Domisili
+    [30] Provinsi Domisili
+    [31] Kodepos Domisili
+    [32] Pekerjaan
+    [33] Tgl Cair
+    [34] Tenor
+    [35] OVD
+    [36]  Tgl Pembayaran
+    [37] Tgl Jatuh Tempo
+    [38] Pokok Awal
+    [39] Saldo Pokok
+    [40] Pinjam Awal
+    [41] Rate
+    [42] Pendapatan Bunga
+    [43] Biaya Pemeliharaan
+    [44] Admin Penjualan
+    [45] Diskon Pelunasan
+    [46] Diskon Penjualan
+    [47] Pembulatan
+    [48] Nilai Lunas
+    [49] Pelunasan Pokok
+    [50] Acrue Bunga
+    [51] Upsite
+    [52] Kode Mitra
+    [53] Bank Pendana
+    [54] Rate JF
+    [55] Porsi Bank
+    [56] Pelunasan JF
+    [57] Status Pelunasan
+    [58] Foto Pelunasan
+    [59] Jenis Pembayaran
+  --- Sample row ---
+    1 = 2617231
+    Kode Produk = 15-13.359
+    Kode Outlet = 352
+    Nama Outlet = MAS SAPE
+    Nama Cabang = 359-MAS TENTE
+    Nama Wilayah = GADAI MAS NUSANTARA
+    No SBG = 001352082504808
+    No Kwitansi Perpanjangan = 
+    No SBG Lama = 
+    No Kwitansi Sebelumnya = 
+    Nama Customer = MUJNAH
+    CIF = 352.0.002614
+    No KTP = '5206064107651364
+    HP = 085337004279
+    Tempat Lahir = JIABSAPE
+    Tanggal Lahir = 1965-07-01
+    Alamat KTP = DUSUN MUBARAKAH
+    RT = 13
+    RW = 6
+    Kelurahan = Jia
+    Kecamatan = Sape
+    Kabupaten = Kab. Bima-Kabupaten
+    Provinsi = Nusa Tenggara Barat 
+    Kodepos = 84182
+    Alamat Domisili = DUSUN MUBARAKAH
+    RT Domisili = 13
+    RW Domisili = 6
+    Kelurahan Domisili = Jia
+    Kecamatan Domisili = Sape
+    Kabupaten Domisili = Kab. Bima-Kabupaten
+    Provinsi Domisili = Nusa Tenggara Barat 
+    Kodepos Domisili = 84182
+    Pekerjaan = IBU RUMAH TANGGA
+    Tgl Cair = 2025-08-11
+    Tenor = 120
+    OVD = 28
+     Tgl Pembayaran = 2026-01-05
+    Tgl Jatuh Tempo = 2025-12-08
+    Pokok Awal = 0
+    Saldo Pokok = 2330000
+    Pinjam Awal = 2502420
+    Rate = 22.2
+    Pendapatan Bunga = 172420
+    Biaya Pemeliharaan = 52425
+    Admin Penjualan = 0
+    Diskon Pelunasan = 0
+    Diskon Penjualan = 0
+    Pembulatan = 155
+    Nilai Lunas = 224845
+    Pelunasan Pokok = 0
+    Acrue Bunga = 172416
+    Upsite = 0
+    Pelunasan JF = 0
+    Status Pelunasan = Perpanjangan Murni
+    Jenis Pembayaran = TUNAI
+
+Done!

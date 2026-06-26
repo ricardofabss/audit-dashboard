@@ -32,27 +32,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       setIdentity(await loadIdentity());
+    } catch {
+      // If token refresh fails (stale/expired session), clear identity gracefully
+      setIdentity(null);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // In development mode, skip Supabase browser client entirely to avoid
+    // _refreshAccessToken errors when Supabase is unreachable.
+    // Just load the dev bypass identity from the API.
+    const isDev = process.env.NODE_ENV === "development";
+    if (isDev) {
+      void refresh();
+      return;
+    }
+
     if (!envReady) return;
 
     const supabase = createSupabaseBrowserClient();
     if (!supabase) {
+      setLoading(false);
       return;
     }
 
     setTimeout(() => {
       void refresh();
     }, 0);
+
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      refresh();
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        setIdentity(null);
+        setLoading(false);
+        return;
+      }
+      void refresh();
     });
+
+    // Handle Supabase internal errors (e.g. stale refresh tokens in localStorage)
+    supabase.auth.getSession().catch(() => {
+      setIdentity(null);
+      setLoading(false);
+    });
+
     return () => {
       subscription.unsubscribe();
     };

@@ -1,6 +1,10 @@
 import { Button } from "@/components/ui/button";
 
-type Action = { label: string; variant?: "default" | "secondary" | "outline" | "ghost" | "danger" };
+type Action = {
+  label: string;
+  variant?: "default" | "secondary" | "outline" | "ghost" | "danger";
+  onClick?: () => void;
+};
 
 export function PageHeader({
   title,
@@ -20,7 +24,7 @@ export function PageHeader({
       {actions?.length ? (
         <div className="flex flex-wrap items-center gap-2">
           {actions.map((item) => (
-            <Button key={item.label} variant={item.variant ?? "outline"}>
+            <Button key={item.label} variant={item.variant ?? "outline"} onClick={item.onClick}>
               {item.label}
             </Button>
           ))}

@@ -1,4 +1,6 @@
-import { findings } from "@/lib/mock-data";
+"use client";
+
+import { useAuditStore } from "@/hooks/use-audit-store";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +8,7 @@ import { ModuleTable, TableCell } from "@/components/shared/module-table";
 import { TaskOrderGenerator } from "@/modules/approvals/task-order-generator";
 
 export default function ApprovalsPage() {
+  const { findings } = useAuditStore();
   return (
     <div className="space-y-4 pb-10">
       <PageHeader title="Approval Workflow" subtitle="Route approvals for remediation plans, risk acceptance, case escalations, and auto-generated task orders." actions={[{ label: "Create Approval Chain", variant: "default" }, { label: "SLA Rules" }]} />
