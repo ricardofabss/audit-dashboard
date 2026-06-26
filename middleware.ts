@@ -121,7 +121,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const bypass = roles.includes("OWNER") || roles.includes("ADMIN");
-  if (!bypass && !permissions.includes(permission)) {
+  if (!bypass && !permissions.includes(permission!)) {
     return NextResponse.redirect(new URL("/403", request.url));
   }
 
