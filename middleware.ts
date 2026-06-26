@@ -104,15 +104,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  const profileStatus = await getProfileStatus(supabase, user.id);
+  const profileStatus = await getProfileStatus(supabase, user!.id);
   if (profileStatus === "SUSPENDED" || profileStatus === "DISABLED") {
     return NextResponse.redirect(new URL("/403", request.url));
   }
 
-  let permissions = parseMetadataPermissions(user.app_metadata?.permissions);
-  let roles = parseMetadataRoles(user.app_metadata?.roles);
+  let permissions = parseMetadataPermissions(user?.app_metadata?.permissions);
+  let roles = parseMetadataRoles(user?.app_metadata?.roles);
   if (roles.length === 0 && permissions.length === 0) {
-    const fallbackClaims = await getFallbackClaims(supabase, user.id);
+    const fallbackClaims = await getFallbackClaims(supabase, user!.id);
     if (fallbackClaims.status === "SUSPENDED" || fallbackClaims.status === "DISABLED") {
       return NextResponse.redirect(new URL("/403", request.url));
     }
