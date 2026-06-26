@@ -5,9 +5,8 @@ import { createSupabaseServerClient } from "@/lib/auth/supabase-server";
 import { syncIdentityToSupabaseMetadata } from "@/lib/auth/identity-sync";
 
 export async function GET() {
-  // If no Supabase env is configured, always return the dev bypass identity (even in production)
-  // This allows the UI prototype to work without a real auth backend.
-  if (process.env.NODE_ENV === "development" || !hasSupabasePublicEnv()) {
+  // FORCE BYPASS for prototype
+  if (true) {
     const identity = await getServerSessionIdentity();
     return NextResponse.json({ identity });
   }

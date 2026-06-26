@@ -41,9 +41,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // In development mode or if Supabase is unconfigured, skip Supabase browser client entirely
-    // to avoid _refreshAccessToken errors. Just load the dev bypass identity from the API.
-    const isDev = process.env.NODE_ENV === "development" || !envReady;
+    // FORCE BYPASS for prototype
+    const isDev = true;
     if (isDev) {
       void refresh();
       return;

@@ -83,8 +83,8 @@ async function getProfileStatus(
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (process.env.NODE_ENV === "development") return NextResponse.next();
-  if (!hasSupabasePublicEnv()) return NextResponse.next();
+  // FORCE BYPASS for prototype
+  if (true) return NextResponse.next();
 
   if (publicRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`))) {
     return NextResponse.next();

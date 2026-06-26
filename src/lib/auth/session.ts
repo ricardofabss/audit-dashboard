@@ -91,7 +91,8 @@ async function getIdentityFromSupabaseApi(
 }
 
 export async function getServerSessionIdentity(): Promise<SessionIdentity | null> {
-  if (process.env.NODE_ENV === "development" || !process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  // FORCE BYPASS for prototype
+  if (true) {
     return {
       userId: "dev-bypass-user-id",
       email: "dev@auditsphere.ai",
