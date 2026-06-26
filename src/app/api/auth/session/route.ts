@@ -5,14 +5,11 @@ import { createSupabaseServerClient } from "@/lib/auth/supabase-server";
 import { syncIdentityToSupabaseMetadata } from "@/lib/auth/identity-sync";
 
 export async function GET() {
-  // In development mode, skip all Supabase network calls and return dev bypass identity directly
-  if (process.env.NODE_ENV === "development") {
+  // If no Supabase env is configured, always return the dev bypass identity (even in production)
+  // This allows the UI prototype to work without a real auth backend.
+  if (process.env.NODE_ENV === "development" || !hasSupabasePublicEnv()) {
     const identity = await getServerSessionIdentity();
     return NextResponse.json({ identity });
-  }
-
-  if (!hasSupabasePublicEnv()) {
-    return NextResponse.json({ identity: null, warning: "Supabase env belum dikonfigurasi." });
   }
 
   try {
