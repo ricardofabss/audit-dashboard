@@ -20,18 +20,18 @@ export async function GET() {
     if (user) {
       try {
         await syncIdentityToSupabaseMetadata({
-          authUserId: user.id,
-          email: user.email ?? null,
+          authUserId: user!.id,
+          email: user!.email ?? null,
           currentMetadata: {
-            roles: Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [],
-            permissions: Array.isArray(user.app_metadata?.permissions)
-              ? user.app_metadata.permissions
+            roles: Array.isArray(user?.app_metadata?.roles) ? user!.app_metadata.roles : [],
+            permissions: Array.isArray(user?.app_metadata?.permissions)
+              ? user!.app_metadata.permissions
               : [],
             branchId:
-              typeof user.app_metadata?.branchId === "string" ? user.app_metadata.branchId : null,
+              typeof user?.app_metadata?.branchId === "string" ? user!.app_metadata.branchId : null,
             divisionId:
-              typeof user.app_metadata?.divisionId === "string"
-                ? user.app_metadata.divisionId
+              typeof user?.app_metadata?.divisionId === "string"
+                ? user!.app_metadata.divisionId
                 : null,
           },
         });

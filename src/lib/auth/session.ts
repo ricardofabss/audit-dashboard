@@ -125,13 +125,13 @@ export async function getServerSessionIdentity(): Promise<SessionIdentity | null
   if (!user) return null;
 
   try {
-    return await getIdentityFromDatabase(user.id, user.email ?? null);
+    return await getIdentityFromDatabase(user!.id, user!.email ?? null);
   } catch {
-    return getIdentityFromSupabaseApi(supabase, user.id, user.email ?? null, {
-      roles: user.app_metadata?.roles,
-      permissions: user.app_metadata?.permissions,
-      branchId: user.app_metadata?.branchId,
-      divisionId: user.app_metadata?.divisionId,
+    return getIdentityFromSupabaseApi(supabase, user!.id, user!.email ?? null, {
+      roles: user?.app_metadata?.roles,
+      permissions: user?.app_metadata?.permissions,
+      branchId: user?.app_metadata?.branchId,
+      divisionId: user?.app_metadata?.divisionId,
     });
   }
 }

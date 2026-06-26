@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase!.auth.onAuthStateChange((_event, session) => {
       if (!session) {
         setIdentity(null);
         setLoading(false);
@@ -70,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     // Handle Supabase internal errors (e.g. stale refresh tokens in localStorage)
-    supabase.auth.getSession().catch(() => {
+    supabase!.auth.getSession().catch(() => {
       setIdentity(null);
       setLoading(false);
     });
