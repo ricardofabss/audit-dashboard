@@ -28,6 +28,7 @@ export default function DocumentsPage() {
     if (!name.trim() || !owner.trim()) return;
 
     addDocument({
+      id: Math.random().toString(36).substring(2, 9),
       name,
       type,
       version,
