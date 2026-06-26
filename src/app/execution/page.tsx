@@ -31,6 +31,7 @@ export default function ExecutionPage() {
     if (!fileName.trim()) return;
 
     addDocument({
+      id: Math.random().toString(36).substring(2, 9),
       name: fileName.endsWith(".pdf") || fileName.endsWith(".xlsx") || fileName.endsWith(".zip") 
         ? fileName 
         : `${fileName}.pdf`,
