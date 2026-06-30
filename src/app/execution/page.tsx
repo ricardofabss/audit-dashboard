@@ -77,7 +77,7 @@ export default function ExecutionPage() {
                 branch: audit.branch,
                 category: item.category || "Operasional",
                 severity: (["Critical", "High", "Medium", "Low"].includes(item.severity) ? item.severity : "Medium") as any,
-                status: "Draft",
+                status: "Open",
                 owner: item.owner || "Auditee",
                 dueDate: audit.dueDate,
                 actionPlan: "",
