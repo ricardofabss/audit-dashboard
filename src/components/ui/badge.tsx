@@ -5,6 +5,7 @@ const toneMap = {
   cyan: "border-cyan-300/30 bg-cyan-300/10 text-cyan-200",
   emerald: "border-emerald-300/30 bg-emerald-300/10 text-emerald-200",
   amber: "border-amber-300/30 bg-amber-300/10 text-amber-200",
+  yellow: "border-yellow-300/30 bg-yellow-300/10 text-yellow-200",
   red: "border-rose-300/30 bg-rose-300/10 text-rose-200",
   indigo: "border-indigo-300/30 bg-indigo-300/10 text-indigo-200",
   slate: "border-white/10 bg-white/5 text-slate-300",

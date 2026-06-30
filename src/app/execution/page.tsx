@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAuditStore } from "@/hooks/use-audit-store";
+import type { Finding } from "@/types/audit";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -76,10 +77,11 @@ export default function ExecutionPage() {
                 description: item.description || "",
                 branch: audit.branch,
                 category: item.category || "Operasional",
-                severity: (["Critical", "High", "Medium", "Low"].includes(item.severity) ? item.severity : "Medium") as any,
+                severity: (["Critical", "High", "Medium", "Low"].includes(item.severity) ? item.severity : "Medium") as Finding["severity"],
                 status: "Open",
                 owner: item.owner || "Auditee",
-                dueDate: audit.dueDate,
+                sla: "30 days left",
+                risk: 0,
                 actionPlan: "",
                 auditId: audit.id,
                 auditName: audit.name

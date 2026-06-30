@@ -1,11 +1,12 @@
 export type Severity = "Low" | "Medium" | "High" | "Critical";
-export type Status = "Open" | "In Review" | "In Progress" | "Resolved" | "Escalated";
+export type Status = "Draft" | "Open" | "In Review" | "In Progress" | "Resolved" | "Escalated";
 
 export type Finding = {
   id: string;
   title: string;
   description?: string;
   branch: string;
+  category?: string;
   owner: string;
   severity: Severity;
   status: Status;
@@ -13,6 +14,7 @@ export type Finding = {
   progress: number;
   risk: number;
   actionPlan: string;
+  dueDate?: string;
   auditId?: string;
   auditName?: string;
 };
