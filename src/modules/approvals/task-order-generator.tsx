@@ -30,7 +30,7 @@ const taskOrderSchema = z
     members: z.array(memberSchema).min(1, "Minimal ada 1 anggota"),
     objectives: z.string().optional(),
     notes: z.string().optional(),
-    hasExternalTaskOrder: z.boolean().default(false),
+    hasExternalTaskOrder: z.boolean(),
     externalFileName: z.string().optional(),
   })
   .refine((value) => !value.hasExternalTaskOrder || (value.hasExternalTaskOrder && !!value.externalFileName), {
