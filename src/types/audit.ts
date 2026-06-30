@@ -4,6 +4,7 @@ export type Status = "Open" | "In Review" | "In Progress" | "Resolved" | "Escala
 export type Finding = {
   id: string;
   title: string;
+  description?: string;
   branch: string;
   owner: string;
   severity: Severity;
@@ -11,6 +12,9 @@ export type Finding = {
   sla: string;
   progress: number;
   risk: number;
+  actionPlan: string;
+  auditId?: string;
+  auditName?: string;
 };
 
 export type Activity = {

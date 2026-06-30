@@ -144,7 +144,7 @@ export default function WBSPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-400">Intake Status</label>
+              <label className="mb-1 block text-xs font-medium text-slate-400">{t("wbs.intakeStatus")}</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}

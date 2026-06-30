@@ -10,9 +10,10 @@ type ModalProps = {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  maxWidth?: "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl";
 };
 
-export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, maxWidth = "md" }: ModalProps) {
   // Close on Escape key press
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -47,7 +48,14 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 16 }}
             transition={{ type: "spring", duration: 0.3 }}
-            className="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-[#091124]/95 shadow-[0_0_50px_-12px_rgba(34,211,238,0.25)] backdrop-blur-xl md:max-w-md"
+            className={`relative z-10 w-full overflow-hidden rounded-2xl border border-white/10 bg-[#091124]/95 shadow-[0_0_50px_-12px_rgba(34,211,238,0.25)] backdrop-blur-xl ${
+              maxWidth === "md" ? "max-w-md" :
+              maxWidth === "lg" ? "max-w-lg" :
+              maxWidth === "xl" ? "max-w-xl" :
+              maxWidth === "2xl" ? "max-w-2xl" :
+              maxWidth === "3xl" ? "max-w-3xl" :
+              "max-w-4xl"
+            }`}
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">

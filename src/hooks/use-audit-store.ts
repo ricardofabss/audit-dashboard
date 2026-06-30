@@ -18,6 +18,8 @@ export type Audit = {
   status: string;
   progress: number;
   risk: string;
+  period: string;
+  dueDate: string;
 };
 
 export type WBSCase = {
@@ -79,6 +81,8 @@ type AuditStore = {
   deleteDocument: (name: string) => void;
   updateFindingProgress: (id: string, progress: number) => Promise<void>;
   updateFindingStatus: (id: string, status: Finding["status"]) => Promise<void>;
+  approveFinding: (id: string) => Promise<void>;
+  updateAuditStatus: (id: string, status: string) => void;
   updateAuditProgress: (id: string, progress: number) => void;
   resetAll: () => void;
   language: "en" | "id";
@@ -149,8 +153,11 @@ export const useAuditStore = create<AuditStore>()(
       },
 
       addFinding: async (finding) => {
-        const id = `FIN-2026-${Math.floor(100 + Math.random() * 900)}`;
-        const newFinding = { ...finding, id, progress: 0 };
+        const id = `FIN-2026-${Date.now().toString().slice(-4)}-${Math.floor(10 + Math.random() * 90)}`;
+        const newFinding = { ...finding, id, progress: 0, sla: "30 days left" };
+        
+        // Optimistic UI update for the demo
+        set((state) => ({ findings: [newFinding, ...state.findings] }));
         
         try {
           await fetch("/api/findings", {
@@ -167,9 +174,8 @@ export const useAuditStore = create<AuditStore>()(
           };
           
           await get().addActivity(newActivity);
-          set((state) => ({ findings: [newFinding, ...state.findings] }));
         } catch (error) {
-          console.error("Failed to add finding:", error);
+          console.error("Failed to post finding to API (demo mode continues):", error);
         }
       },
 
@@ -302,6 +308,21 @@ export const useAuditStore = create<AuditStore>()(
         }
       },
 
+      approveFinding: async (id) => {
+        set((state) => ({
+          findings: state.findings.map((f) =>
+            f.id === id ? { ...f, status: "Open" } : f
+          ),
+        }));
+      },
+
+      updateAuditStatus: (id, status) =>
+        set((state) => ({
+          audits: state.audits.map((a) =>
+            a.id === id ? { ...a, status } : a
+          ),
+        })),
+
       updateAuditProgress: (id, progress) =>
         set((state) => ({
           audits: state.audits.map((a) => (a.id === id ? { ...a, progress } : a)),
@@ -318,7 +339,7 @@ export const useAuditStore = create<AuditStore>()(
         }),
     }),
     {
-      name: "auditsphere-store",
+      name: "audit-storage-v7",
       // Exclude functions and non-critical state from persistence if needed
       // but for now let's persist what we fetch to reduce flickers.
     }

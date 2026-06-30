@@ -154,7 +154,7 @@ export default function DocumentsPage() {
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-400">Uploader / Owner</label>
+            <label className="mb-1 block text-xs font-medium text-slate-400">{t("docs.uploader")}</label>
             <Input
               required
               value={owner}

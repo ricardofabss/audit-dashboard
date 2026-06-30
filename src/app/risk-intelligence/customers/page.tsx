@@ -203,7 +203,7 @@ export default function CustomerRiskPage() {
             <Card>
               <CardContent className="py-12 text-center">
                 <Users className="mx-auto h-12 w-12 text-slate-600 mb-3" />
-                <p className="text-sm text-slate-400">Select a customer to view risk details</p>
+                <p className="text-sm text-slate-400">{t("ri.custSelect")}</p>
               </CardContent>
             </Card>
           )}

@@ -8,7 +8,7 @@ export const translations = {
 
     // Navigation Labels
     "nav.dashboard": "Dashboard",
-    "nav.planning": "Audit Planning",
+    "nav.planning": "Audit Assignments",
     "nav.execution": "Audit Execution",
     "nav.findings": "Findings",
     "nav.followup": "Follow-up Monitoring",
@@ -42,14 +42,72 @@ export const translations = {
     "dash.btnExport": "Export Executive Pack",
 
     // Planning
-    "plan.title": "Audit Planning",
-    "plan.subtitle": "Risk-based annual planning, scheduling, and auditor assignment.",
-    "plan.btnCreate": "Create Plan",
+    "plan.title": "Audit Assignments",
+    "plan.subtitle": "Assignment letters and auditor scheduling.",
+    "plan.btnCreate": "Create Assignment",
     "plan.btnCalendar": "Open Calendar",
     "plan.calendarTitle": "Annual Audit Calendar",
     "plan.riskMatrix": "Risk Matrix Snapshot",
-    "plan.plannedAudits": "Planned Audits",
-    "plan.modalTitle": "Create New Audit Plan",
+    "plan.plannedAudits": "Audit Assignments",
+    "plan.modalTitle": "Create New Assignment",
+
+    // Execution
+    "exec.title": "Audit Execution Workspace",
+    "exec.subtitle": "Monitor periods, deadlines, and upload audit reports.",
+    "exec.tableTitle": "Audit Assignments",
+    "exec.colName": "Audit Name & Unit",
+    "exec.colPeriod": "Period",
+    "exec.colDueDate": "Due Date",
+    "exec.colStatus": "Status",
+    "exec.colActions": "Actions",
+    "exec.btnUpload": "Upload Audit Report",
+    "exec.modalTitle": "Upload Audit Report",
+    "exec.modalSubtitle": "Uploaded reports will automatically be sent to the supervisor (Lead Auditor / CAE) for review.",
+    "exec.btnCancel": "Cancel",
+    "exec.btnSubmit": "Submit for Review",
+    "exec.successMsg": "Success: Audit Report for",
+    "exec.empty": "No audit assignments.",
+    "exec.chooseFile": "Choose Report File (Excel)",
+
+    // Planning specific
+    "plan.createTitle": "Create Assignment Letter",
+    "plan.createSubtitle": "Generate an assignment letter and register a new audit plan in the system.",
+    "plan.btnBack": "Back to Planning",
+    "plan.colAudit": "Audit",
+    "plan.colBranch": "Branch",
+    "plan.colLead": "Lead",
+    "plan.colPeriod": "Period",
+    "plan.colStatus": "Status",
+    "plan.colProgress": "Progress",
+
+    // Generator UI
+    "gen.title": "Assignment Letter Generator",
+    "gen.letterDate": "Letter Date (Auto)",
+    "gen.letterNumber": "Letter Number (Auto)",
+    "gen.bu": "Business Unit",
+    "gen.branch": "Branch/Area",
+    "gen.type": "Assignment Type",
+    "gen.start": "Assignment Start",
+    "gen.end": "Assignment End",
+    "gen.periodStart": "Audit Period Start",
+    "gen.periodEnd": "Audit Period End",
+    "gen.coord": "Coordinator",
+    "gen.members": "Team Members",
+    "gen.addMember": "Add Member",
+    "gen.objectives": "Audit Objectives",
+    "gen.notes": "Notes",
+    "gen.signName": "Signatory Name",
+    "gen.signTitle": "Signatory Title",
+    "gen.btnGenerate": "Create Task Order",
+    "gen.useExternal": "Use Task Order from Business Unit",
+    "gen.uploadLabel": "Upload BU Task Order",
+    "gen.chooseFile": "Choose Document",
+    "gen.noFile": "No file selected...",
+    "gen.pending": "Pending Approval",
+    "gen.status": "Submission Status",
+    "gen.fullName": "Full Name",
+    "gen.position": "Position",
+    "gen.delete": "Delete",
 
     // Findings
     "findings.title": "Findings Management",
@@ -57,6 +115,8 @@ export const translations = {
     "findings.btnCreate": "Create Finding",
     "findings.btnFilter": "Filter Panel",
     "findings.registerTitle": "Findings Register",
+    "findings.empty": "No findings.",
+    "findings.workflowStatus": "Workflow Status",
 
     // Follow-up
     "followup.title": "Follow-up Monitoring",
@@ -64,12 +124,20 @@ export const translations = {
     "followup.btnReminder": "Send Reminder",
     "followup.btnExport": "Export Follow-up",
     "followup.trackerTitle": "Remediation Tracker",
+    "followup.empty": "No findings to follow-up.",
 
     // WBS
     "wbs.title": "Whistleblowing System (WBS)",
     "wbs.subtitle": "Anonymous intake, AI classification, fraud scoring, and investigation routing.",
     "wbs.btnRegister": "Register Case",
     "wbs.btnSecurity": "Security Settings",
+    "wbs.intakeStatus": "Intake Status",
+
+    // Customer & Anomaly
+    "ri.custSelect": "Select a customer to view risk details",
+
+    // User Management
+    "users.title": "User Management",
 
     // Risk
     "risk.title": "Risk Management",
@@ -90,6 +158,7 @@ export const translations = {
     "compliance.rankingTitle": "Branch Compliance Ranking",
 
     // Documents
+    "docs.uploader": "Uploader / Owner",
     "docs.title": "Document Center",
     "docs.subtitle": "Enterprise archive with search, versions, secure preview, and upload controls.",
     "docs.btnUpload": "Upload Documents",
@@ -232,7 +301,7 @@ export const translations = {
 
     // Navigation Labels
     "nav.dashboard": "Dashboard",
-    "nav.planning": "Perencanaan Audit",
+    "nav.planning": "Surat Tugas",
     "nav.execution": "Pelaksanaan Audit",
     "nav.findings": "Temuan Audit",
     "nav.followup": "Pemantauan Tindak Lanjut",
@@ -266,34 +335,102 @@ export const translations = {
     "dash.btnExport": "Ekspor Dokumen Eksekutif",
 
     // Planning
-    "plan.title": "Perencanaan Audit",
-    "plan.subtitle": "Perencanaan tahunan berbasis risiko, penjadwalan, dan penugasan auditor.",
-    "plan.btnCreate": "Buat Rencana",
+    "plan.title": "Surat Tugas Audit",
+    "plan.subtitle": "Pembuatan dan penugasan Surat Tugas untuk pemeriksaan lapangan.",
+    "plan.btnCreate": "Buat Surat Tugas",
     "plan.btnCalendar": "Buka Kalender",
-    "plan.calendarTitle": "Kalender Audit Tahunan",
+    "plan.calendarTitle": "Kalender Surat Tugas",
     "plan.riskMatrix": "Snapshot Matriks Risiko",
-    "plan.plannedAudits": "Daftar Audit Terencana",
-    "plan.modalTitle": "Buat Rencana Audit Baru",
+    "plan.plannedAudits": "Daftar Surat Tugas",
+    "plan.modalTitle": "Buat Surat Tugas Baru",
+
+    // Execution
+    "exec.title": "Daftar Penugasan Pemeriksaan",
+    "exec.subtitle": "Pantau periode pemeriksaan, batas waktu, dan unggah laporan hasil audit.",
+    "exec.tableTitle": "Audit Assignments",
+    "exec.colName": "Audit Name & Unit",
+    "exec.colPeriod": "Periode",
+    "exec.colDueDate": "Due Date",
+    "exec.colStatus": "Status",
+    "exec.colActions": "Aksi",
+    "exec.btnUpload": "Upload Laporan Audit",
+    "exec.modalTitle": "Upload Laporan Audit",
+    "exec.modalSubtitle": "Laporan yang diupload akan otomatis diteruskan ke atasan (Ketua Tim / Kepala Audit) untuk ditinjau.",
+    "exec.btnCancel": "Batal",
+    "exec.btnSubmit": "Ajukan untuk Ditinjau",
+    "exec.successMsg": "Berhasil: Laporan Audit untuk",
+    "exec.empty": "Belum ada penugasan audit.",
+    "exec.chooseFile": "Pilih File Laporan (Excel)",
+
+    // Planning specific
+    "plan.createTitle": "Buat Surat Tugas",
+    "plan.createSubtitle": "Hasilkan draf surat tugas dan daftarkan rencana pemeriksaan baru ke dalam sistem.",
+    "plan.btnBack": "Kembali ke Perencanaan",
+    "plan.colAudit": "Audit",
+    "plan.colBranch": "Cabang",
+    "plan.colLead": "Ketua Tim",
+    "plan.colPeriod": "Periode Pemeriksaan",
+    "plan.colStatus": "Status",
+    "plan.colProgress": "Progres",
+
+    // Generator UI
+    "gen.title": "Generator Surat Tugas",
+    "gen.letterDate": "Tanggal Surat (Auto)",
+    "gen.letterNumber": "Nomor Surat (Auto)",
+    "gen.bu": "Business Unit",
+    "gen.branch": "Cabang/Area",
+    "gen.type": "Jenis Penugasan",
+    "gen.start": "Tanggal Mulai Tugas",
+    "gen.end": "Tanggal Selesai Tugas",
+    "gen.periodStart": "Periode Audit Awal",
+    "gen.periodEnd": "Periode Audit Akhir",
+    "gen.coord": "Koordinator",
+    "gen.members": "Anggota Tim",
+    "gen.addMember": "Tambah Anggota",
+    "gen.objectives": "Tujuan Pemeriksaan",
+    "gen.notes": "Catatan",
+    "gen.signName": "Nama Penandatangan",
+    "gen.signTitle": "Jabatan Penandatangan",
+    "gen.btnGenerate": "Buat Surat Tugas",
+    "gen.useExternal": "Menggunakan Surat Tugas dari Business Unit",
+    "gen.uploadLabel": "Upload Surat Tugas BU",
+    "gen.chooseFile": "Pilih Dokumen",
+    "gen.noFile": "Belum ada file terpilih...",
+    "gen.pending": "Menunggu Persetujuan",
+    "gen.status": "Status Pengajuan",
+    "gen.fullName": "Nama Lengkap",
+    "gen.position": "Jabatan",
+    "gen.delete": "Hapus",
+
+    // Customer & Anomaly
+    "ri.custSelect": "Pilih nasabah untuk melihat detail risiko",
+
+    // User Management
+    "users.title": "Manajemen Pengguna",
 
     // Findings
     "findings.title": "Manajemen Temuan",
-    "findings.subtitle": "Triase tingkat keparahan, pemantauan SLA, alur status, dan progres tindak lanjut.",
+    "findings.subtitle": "Triase prioritas, pemantauan SLA, alur status, dan perkembangan tindak lanjut.",
     "findings.btnCreate": "Buat Temuan",
     "findings.btnFilter": "Panel Filter",
-    "findings.registerTitle": "Register Temuan Audit",
+    "findings.registerTitle": "Daftar Temuan",
+    "findings.empty": "Belum ada temuan.",
+    "findings.workflowStatus": "Status Alur Kerja",
 
     // Follow-up
     "followup.title": "Pemantauan Tindak Lanjut",
     "followup.subtitle": "Pantau kemajuan perbaikan, kepemilikan, tanggal jatuh tempo, dan bukti penyelesaian.",
     "followup.btnReminder": "Kirim Pengingat",
     "followup.btnExport": "Ekspor Tindak Lanjut",
-    "followup.trackerTitle": "Pelacak Progress Perbaikan",
+    "followup.trackerTitle": "Pelacak Perbaikan",
+    "followup.empty": "Belum ada temuan untuk difollow-up.",
 
     // WBS
     "wbs.title": "Sistem Pengaduan (WBS)",
     "wbs.subtitle": "Penerimaan anonim, klasifikasi AI, penilaian risiko fraud, dan rute investigasi.",
     "wbs.btnRegister": "Daftarkan Kasus",
     "wbs.btnSecurity": "Pengaturan Keamanan",
+    "wbs.intakeStatus": "Status Pengajuan",
 
     // Risk
     "risk.title": "Manajemen Risiko",
@@ -311,9 +448,10 @@ export const translations = {
     "compliance.btnGap": "Jalankan Analisis Celah",
     "compliance.overallTitle": "Kepatuhan Keseluruhan",
     "compliance.frameworkTitle": "Daftar Ketaatan Kerangka Kerja",
-    "compliance.rankingTitle": "Peringkat Kepatuhan Kantor Cabang",
+    "compliance.rankingTitle": "Peringkat Kepatuhan Cabang",
 
     // Documents
+    "docs.uploader": "Pengunggah / Pemilik",
     "docs.title": "Pusat Dokumen",
     "docs.subtitle": "Arsip perusahaan dengan pencarian, kontrol versi, pratinjau aman, dan kontrol unggahan.",
     "docs.btnUpload": "Unggah Dokumen",

@@ -10,21 +10,17 @@ import { Modal } from "@/components/shared/modal";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/use-translation";
+import { businessUnits } from "@/lib/business-units";
+import { TaskOrderGenerator } from "@/modules/approvals/task-order-generator";
 
 export default function PlanningPage() {
-  const { audits, addAudit } = useAuditStore();
+  const { audits } = useAuditStore();
   const { t } = useTranslation();
-  const [isOpen, setIsOpen] = useState(false);
-  
-  // Form states
-  const [name, setName] = useState("");
-  const [branch, setBranch] = useState("Jakarta Operations");
-  const [lead, setLead] = useState("");
-  const [risk, setRisk] = useState("High");
+  const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.location.search.includes("create=true")) {
-      setIsOpen(true);
+      setIsCreating(true);
       const url = new URL(window.location.href);
       url.searchParams.delete("create");
       window.history.replaceState({}, document.title, url.pathname);
@@ -38,25 +34,46 @@ export default function PlanningPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || !lead.trim()) return;
-
-    addAudit({
-      name,
-      branch,
-      lead,
-      risk,
-      status: "Planning",
-    });
-
-    // Reset form
-    setName("");
-    setLead("");
-    setBranch("Jakarta Operations");
-    setRisk("High");
-    setIsOpen(false);
+  const getAuditMonths = (period: string) => {
+    const months = new Set<number>();
+    const matches = period.match(/\d{2}\/(\d{2})\/\d{4}/g);
+    if (matches) {
+      matches.forEach(m => {
+        const parts = m.split("/");
+        if (parts.length === 3) {
+          const monthIndex = parseInt(parts[1], 10) - 1;
+          if (monthIndex >= 0 && monthIndex <= 11) {
+            months.add(monthIndex);
+          }
+        }
+      });
+    }
+    return Array.from(months);
   };
+
+  const auditsByMonth: Record<number, typeof audits> = {};
+  audits.forEach(audit => {
+    const months = getAuditMonths(audit.period || "");
+    months.forEach(m => {
+      if (!auditsByMonth[m]) auditsByMonth[m] = [];
+      auditsByMonth[m].push(audit);
+    });
+  });
+
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  if (isCreating) {
+    return (
+      <div className="space-y-4 pb-10">
+        <PageHeader
+          title={t("plan.createTitle")}
+          subtitle={t("plan.createSubtitle")}
+          actions={[{ label: t("plan.btnBack"), variant: "outline", onClick: () => setIsCreating(false) }]}
+        />
+        <TaskOrderGenerator />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 pb-10">
@@ -64,43 +81,69 @@ export default function PlanningPage() {
         title={t("plan.title")}
         subtitle={t("plan.subtitle")}
         actions={[
-          { label: t("plan.btnCreate"), variant: "default", onClick: () => setIsOpen(true) },
+          { label: t("plan.btnCreate"), variant: "default", onClick: () => setIsCreating(true) },
           { label: t("plan.btnCalendar"), onClick: handleScrollToCalendar },
         ]}
       />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <Card id="calendar-card" className="xl:col-span-2 scroll-mt-6">
+        <Card id="calendar-card" className="xl:col-span-2 scroll-mt-6 flex flex-col">
           <CardHeader>
             <CardTitle>{t("plan.calendarTitle")}</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-7 gap-2 text-center text-xs">
-              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
-                <div key={day} className="text-slate-500 font-medium">
-                  {day}
-                </div>
-              ))}
-              {Array.from({ length: 35 }).map((_, idx) => (
-                <div
-                  key={idx}
-                  className="aspect-square rounded-lg border border-white/10 bg-black/20 p-1 text-left text-[11px] text-slate-400"
-                >
-                  {idx % 5 === 0 ? (
-                    <Badge tone="cyan">AUD</Badge>
-                  ) : idx % 8 === 0 ? (
-                    <Badge tone="amber">RISK</Badge>
-                  ) : null}
-                </div>
-              ))}
+          <CardContent className="flex-1 flex flex-col justify-center">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 text-xs h-full">
+              {monthNames.map((monthName, idx) => {
+                const monthAudits = auditsByMonth[idx] || [];
+                const isActive = monthAudits.length > 0;
+                
+                return (
+                  <div
+                    key={monthName}
+                    className={`rounded-xl border p-3 flex flex-col gap-2 transition-all ${
+                      isActive 
+                        ? "border-cyan-500/40 bg-cyan-500/10 shadow-[0_0_15px_rgba(6,182,212,0.15)]" 
+                        : "border-white/5 bg-white/[0.02] opacity-70 hover:opacity-100"
+                    }`}
+                  >
+                    <div className={`font-semibold ${isActive ? "text-cyan-400" : "text-slate-500"}`}>
+                      {monthName}
+                    </div>
+                    
+                    <div className="flex-1 space-y-1">
+                      {isActive ? (
+                        monthAudits.slice(0, 2).map(a => (
+                          <div key={a.id} className="text-[10px] text-slate-300 truncate" title={a.name}>
+                            • {a.name}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-[10px] text-slate-600 italic">No schedules</div>
+                      )}
+                      
+                      {monthAudits.length > 2 && (
+                        <div className="text-[10px] text-cyan-500 font-medium mt-1">
+                          +{monthAudits.length - 2} more
+                        </div>
+                      )}
+                    </div>
+                    
+                    {isActive && (
+                      <div className="mt-1">
+                        <Badge tone="cyan">{monthAudits.length} Audits</Badge>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="flex flex-col">
           <CardHeader>
             <CardTitle>{t("plan.riskMatrix")}</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-5 gap-1">
+          <CardContent className="grid grid-cols-5 gap-1 flex-1 items-center">
             {Array.from({ length: 25 }).map((_, idx) => {
               const val = idx + 1;
               const tone =
@@ -116,7 +159,7 @@ export default function PlanningPage() {
           <CardTitle>{t("plan.plannedAudits")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <ModuleTable headers={["Audit", "Branch", "Lead", "Status", "Progress"]}>
+          <ModuleTable headers={[t("plan.colAudit"), t("plan.colBranch"), t("plan.colLead"), t("plan.colPeriod"), t("plan.colStatus"), t("plan.colProgress")]}>
             {audits.map((audit) => (
               <tr key={audit.id} className="border-b border-white/5 hover:bg-white/[0.02] transition">
                 <TableCell>
@@ -125,6 +168,7 @@ export default function PlanningPage() {
                 </TableCell>
                 <TableCell className="text-slate-300">{audit.branch}</TableCell>
                 <TableCell className="text-slate-300">{audit.lead}</TableCell>
+                <TableCell className="text-slate-400 text-[11px] whitespace-nowrap">{audit.period || "-"}</TableCell>
                 <TableCell>
                   <Badge tone={audit.status === "In Progress" || audit.status === "Fieldwork" ? "cyan" : "indigo"}>
                     {audit.status}
@@ -136,64 +180,6 @@ export default function PlanningPage() {
           </ModuleTable>
         </CardContent>
       </Card>
-
-      {/* Create Plan Modal */}
-      <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title={t("plan.modalTitle")}>
-        <form onSubmit={handleSubmit} className="space-y-4 text-sm">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-400">Audit Engagement Name</label>
-            <Input
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Q4 Procurement Audit"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-400">Target Branch / Location</label>
-            <select
-              value={branch}
-              onChange={(e) => setBranch(e.target.value)}
-              className="w-full rounded-lg border border-white/15 bg-[#0b1224] p-2 text-slate-100 focus:border-cyan-400 focus:outline-none"
-            >
-              <option value="Jakarta Operations">Jakarta Operations</option>
-              <option value="APAC Headquarters">APAC Headquarters</option>
-              <option value="EMEA Nordics">EMEA Nordics</option>
-              <option value="North America West">North America West</option>
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-400">Lead Auditor</label>
-            <Input
-              required
-              value={lead}
-              onChange={(e) => setLead(e.target.value)}
-              placeholder="e.g. Sarah Jenkins"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-400">Initial Risk Assessment</label>
-            <select
-              value={risk}
-              onChange={(e) => setRisk(e.target.value)}
-              className="w-full rounded-lg border border-white/15 bg-[#0b1224] p-2 text-slate-100 focus:border-cyan-400 focus:outline-none"
-            >
-              <option value="Low">Low Risk</option>
-              <option value="Medium">Medium Risk</option>
-              <option value="High">High Risk</option>
-              <option value="Critical">Critical Risk</option>
-            </select>
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" className="bg-cyan-400 hover:bg-cyan-500 text-slate-900 font-semibold">
-              {t("plan.btnCreate")}
-            </Button>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 }
