@@ -117,6 +117,7 @@ export const translations = {
     "findings.registerTitle": "Findings Register",
     "findings.empty": "No findings.",
     "findings.workflowStatus": "Workflow Status",
+    "findings.btnView": "View Detail",
 
     // Follow-up
     "followup.title": "Follow-up Monitoring",
@@ -416,6 +417,7 @@ export const translations = {
     "findings.registerTitle": "Daftar Temuan",
     "findings.empty": "Belum ada temuan.",
     "findings.workflowStatus": "Status Alur Kerja",
+    "findings.btnView": "Lihat Detail",
 
     // Follow-up
     "followup.title": "Pemantauan Tindak Lanjut",
