@@ -17,6 +17,12 @@ export async function GET() {
       sla: f.sla,
       progress: f.progress,
       risk: f.risk,
+      description: f.description || undefined,
+      category: f.category || undefined,
+      dueDate: f.dueDate || undefined,
+      actionPlan: f.actionPlan || undefined,
+      auditId: f.auditId || undefined,
+      auditName: f.auditName || undefined,
     }));
     return NextResponse.json(formattedFindings);
   } catch (error) {
@@ -28,7 +34,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { id, title, branch, owner, severity, status, sla, progress, risk } = body;
+    const { id, title, branch, owner, severity, status, sla, progress, risk, description, category, dueDate, actionPlan, auditId, auditName } = body;
     
     const newFinding = await db.auditFinding.create({
       data: {
@@ -41,6 +47,12 @@ export async function POST(request: Request) {
         sla,
         progress,
         risk,
+        description,
+        category,
+        dueDate,
+        actionPlan,
+        auditId,
+        auditName,
       },
     });
 
@@ -54,13 +66,15 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, progress, status } = body;
+    const { id, progress, status, actionPlan, dueDate } = body;
     
     const updatedFinding = await db.auditFinding.update({
       where: { findingId: id },
       data: {
         ...(progress !== undefined && { progress }),
         ...(status !== undefined && { status }),
+        ...(actionPlan !== undefined && { actionPlan }),
+        ...(dueDate !== undefined && { dueDate }),
       },
     });
 

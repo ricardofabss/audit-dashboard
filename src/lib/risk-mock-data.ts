@@ -17,26 +17,47 @@ import type {
 } from "@/types/risk-intelligence";
 import { businessUnits, sectorMeta } from "@/lib/business-units";
 
-// ─── Helper Utilities ─────────────────────────────────────────────────
+// ─── Seeded PRNG (deterministic across SSR and client) ────────────────
+// Uses mulberry32 algorithm for consistent output given the same seed.
+function mulberry32(seed: number) {
+  return function () {
+    seed |= 0;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
-let _idCounter = 1000;
-const uid = () => `RI-${_idCounter++}`;
+let _seededRng = mulberry32(42);
 
-const pickRandom = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+/** Reset the PRNG to a known state (call before generating a dataset) */
+function resetRng(seed = 42) {
+  _seededRng = mulberry32(seed);
+}
+
+const pickRandom = <T>(arr: T[]): T => arr[Math.floor(_seededRng() * arr.length)];
 
 const randomBetween = (min: number, max: number) =>
-  Math.floor(min + Math.random() * (max - min + 1));
+  Math.floor(min + _seededRng() * (max - min + 1));
+
+let _idCounter = 1000;
+let _idPrefix = "";
+const uid = () => `RI-${_idPrefix}${_idCounter++}`;
 
 const formatDate = (d: Date) => d.toISOString().split("T")[0];
 
+// Use a fixed reference date to avoid SSR/client date mismatch
+const _refDate = new Date("2026-07-15T00:00:00Z");
+
 const daysAgo = (n: number) => {
-  const d = new Date();
+  const d = new Date(_refDate);
   d.setDate(d.getDate() - n);
   return d;
 };
 
 const monthLabel = (monthsAgo: number) => {
-  const d = new Date();
+  const d = new Date(_refDate);
   d.setMonth(d.getMonth() - monthsAgo);
   return d.toLocaleString("en", { month: "short", year: "numeric" });
 };
@@ -293,84 +314,39 @@ function getOtomotifRules(): AnomalyRule[] {
   return [
     {
       id: uid(), code: "O01", sector: "OTOMOTIF",
-      name: "Excessive Discount",
-      nameId: "Diskon Berlebihan",
-      description: "Discount exceeds authorized limit (> 8% OTR)",
-      descriptionId: "Diskon > batas otorisasi (> 8% OTR)",
-      riskWeight: 15, thresholds: { maxDiscountPercent: 8 },
-      isActive: true, category: "PRICING", createdAt: formatDate(daysAgo(180)),
+      name: "Pending Sales Indication",
+      nameId: "Indikasi Pending Sales",
+      description: "> 50% sales occur in the last 7 days of the month",
+      descriptionId: "> 50% penjualan terjadi di 7 hari terakhir bulan berjalan",
+      riskWeight: 15, thresholds: { minRatio: 0.5 },
+      isActive: true, category: "TIMING", createdAt: formatDate(daysAgo(180)),
     },
     {
       id: uid(), code: "O02", sector: "OTOMOTIF",
-      name: "Inventory Aging",
-      nameId: "Aging Stok Kendaraan",
-      description: "Vehicle unit > 90 days in stock (dead stock)",
-      descriptionId: "Unit > 90 hari di stock (dead stock)",
-      riskWeight: 10, thresholds: { maxAgingDays: 90 },
-      isActive: true, category: "INVENTORY", createdAt: formatDate(daysAgo(180)),
-    },
-    {
-      id: uid(), code: "O03", sector: "OTOMOTIF",
-      name: "Sales Spike Pattern",
-      nameId: "Pola Lonjakan Penjualan",
-      description: "End-of-month sales volume > 3x daily average",
-      descriptionId: "Volume penjualan akhir bulan > 3x rata-rata harian",
-      riskWeight: 12, thresholds: { spikeMultiplier: 3 },
-      isActive: true, category: "PATTERN", createdAt: formatDate(daysAgo(180)),
-    },
-    {
-      id: uid(), code: "O04", sector: "OTOMOTIF",
-      name: "Warranty Claim Fraud",
-      nameId: "Kecurangan Klaim Garansi",
-      description: "Warranty claims > 3x per unit within 12 months",
-      descriptionId: "Klaim warranty > 3x per unit dalam 12 bulan",
-      riskWeight: 20, thresholds: { maxClaimsPerUnit: 3, windowMonths: 12 },
-      isActive: true, category: "COMPLIANCE", createdAt: formatDate(daysAgo(180)),
-    },
-    {
-      id: uid(), code: "O05", sector: "OTOMOTIF",
-      name: "Parts Markup Anomaly",
-      nameId: "Anomali Markup Spare Part",
-      description: "Parts sold > 25% above manufacturer standard",
-      descriptionId: "Harga spare part > 25% di atas standar pabrikan",
-      riskWeight: 18, thresholds: { maxMarkupPercent: 25 },
-      isActive: true, category: "PRICING", createdAt: formatDate(daysAgo(180)),
-    },
-    {
-      id: uid(), code: "O06", sector: "OTOMOTIF",
-      name: "Customer Complaint Cluster",
-      nameId: "Klaster Komplain Pelanggan",
-      description: "> 5 complaints from same salesperson per month",
-      descriptionId: "> 5 komplain dari salesman yang sama per bulan",
-      riskWeight: 8, thresholds: { maxComplaints: 5, windowDays: 30 },
-      isActive: true, category: "COMPLIANCE", createdAt: formatDate(daysAgo(180)),
-    },
-    {
-      id: uid(), code: "O07", sector: "OTOMOTIF",
-      name: "Test Drive Unit Abuse",
-      nameId: "Penyalahgunaan Unit Test Drive",
-      description: "Test drive unit mileage exceeds monthly threshold",
-      descriptionId: "KM test drive unit > threshold bulanan",
-      riskWeight: 5, thresholds: { maxMonthlyKm: 500 },
-      isActive: true, category: "INVENTORY", createdAt: formatDate(daysAgo(180)),
-    },
-    {
-      id: uid(), code: "O08", sector: "OTOMOTIF",
-      name: "Finance Kickback Pattern",
-      nameId: "Pola Kickback Pembiayaan",
-      description: "> 80% financing through single leasing company",
-      descriptionId: "> 80% pembiayaan ke satu leasing tertentu",
-      riskWeight: 22, thresholds: { maxFinancePercent: 80 },
+      name: "Leasing Dominance",
+      nameId: "Dominasi Leasing pada Sales",
+      description: "> 60% credit sales dominated by 1 leasing company",
+      descriptionId: "> 60% penjualan kredit dikuasai oleh 1 perusahaan leasing",
+      riskWeight: 20, thresholds: { maxDominanceRatio: 0.6 },
       isActive: true, category: "CONCENTRATION", createdAt: formatDate(daysAgo(180)),
     },
     {
-      id: uid(), code: "O09", sector: "OTOMOTIF",
-      name: "Trade-In Valuation Anomaly",
-      nameId: "Anomali Valuasi Tukar Tambah",
-      description: "Trade-in value > 15% above market price",
-      descriptionId: "Nilai tukar tambah > 15% dari harga pasaran",
-      riskWeight: 18, thresholds: { maxTradeInPremiumPercent: 15 },
-      isActive: true, category: "PRICING", createdAt: formatDate(daysAgo(180)),
+      id: uid(), code: "O04", sector: "OTOMOTIF",
+      name: "Mechanic Inequality",
+      nameId: "Ketimpangan Mekanik",
+      description: "Mechanic performs > 50% of branch workshop orders",
+      descriptionId: "Mekanik mengerjakan > 50% seluruh WO bengkel di cabangnya",
+      riskWeight: 22, thresholds: { maxWorkloadRatio: 0.5 },
+      isActive: true, category: "CONCENTRATION", createdAt: formatDate(daysAgo(180)),
+    },
+    {
+      id: uid(), code: "O05", sector: "OTOMOTIF",
+      name: "Identity Fraud (Different STNK)",
+      nameId: "Indikasi Penipuan Identitas",
+      description: "Salesperson has > 3 sales with different STNK and buyer names",
+      descriptionId: "Sales memiliki > 3 penjualan dengan nama STNK berbeda dari pembeli",
+      riskWeight: 25, thresholds: { maxNameMismatch: 3 },
+      isActive: true, category: "COMPLIANCE", createdAt: formatDate(daysAgo(180)),
     },
   ];
 }
@@ -409,12 +385,18 @@ function generateBreakdown(rules: AnomalyRule[], anomalyCount: number): RiskScor
     items,
     totalRawScore: totalRaw,
     normalizedScore: Math.min(100, Math.round(totalRaw / Math.max(1, items.length))),
-    velocityFactor: +(Math.random() * 1.5 + 0.5).toFixed(2),
-    decayApplied: Math.random() > 0.5,
+    velocityFactor: +(_seededRng() * 1.5 + 0.5).toFixed(2),
+    decayApplied: _seededRng() > 0.5,
   };
 }
 
 function generateDataForBU(buId: string, sector: SectorType): RiskMockDataSet {
+  // Seed is derived from buId so each BU gets deterministic but unique data
+  const seed = buId.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0) * 31 + 42;
+  resetRng(seed);
+  _idCounter = 1000;
+  _idPrefix = buId + "-";
+
   const rules = getRulesForSector(sector);
   const outlets = getOutletsForSector(sector);
   const officers = officerNamesBySetor[sector];
@@ -432,7 +414,7 @@ function generateDataForBU(buId: string, sector: SectorType): RiskMockDataSet {
     const officer = pickRandom(officers);
     const daysBack = randomBetween(1, 180);
 
-    const rand = Math.random() * 100;
+    const rand = _seededRng() * 100;
     let cumulative = 0;
     let status: AnomalyStatus = "DETECTED";
     for (let s = 0; s < statuses.length; s++) {
@@ -560,7 +542,7 @@ function generateDataForBU(buId: string, sector: SectorType): RiskMockDataSet {
       entityName: pickRandom([customer, outlet.name]),
       severity, category,
       confidence: randomBetween(60, 98),
-      isRead: Math.random() > 0.6, actionTaken: Math.random() > 0.8,
+      isRead: _seededRng() > 0.6, actionTaken: _seededRng() > 0.8,
       generatedAt: formatDate(daysAgo(randomBetween(0, 30))),
       insightText: `${rule.name} pattern analysis for ${customer} at ${outlet.name} — ${severity.toLowerCase()} risk with ${randomBetween(1, 15)} occurrences.`,
       insightTextId: `Analisis pola ${rule.nameId} untuk ${customer} di ${outlet.name} — risiko ${severity.toLowerCase()} dengan ${randomBetween(1, 15)} kejadian.`,
@@ -610,7 +592,12 @@ function generateDataForBU(buId: string, sector: SectorType): RiskMockDataSet {
 
 // ─── Multi-BU Data Cache ─────────────────────────────────────────────
 
+// Force reload cache
 const _cache = new Map<string, RiskMockDataSet>();
+
+export function clearMockCache() {
+  _cache.clear();
+}
 
 /** Get mock data for a specific business unit */
 export function getMockDataForBU(buId: string): RiskMockDataSet {
@@ -626,6 +613,10 @@ export function getMockDataForBU(buId: string): RiskMockDataSet {
 export function getConsolidatedMockData(): RiskMockDataSet {
   const cacheKey = "__consolidated__";
   if (_cache.has(cacheKey)) return _cache.get(cacheKey)!;
+
+  // Reset PRNG for deterministic consolidated trend generation
+  resetRng(9999);
+  _idCounter = 5000;
 
   const allRules: AnomalyRule[] = [];
   const allDetections: AnomalyDetection[] = [];

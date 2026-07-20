@@ -35,7 +35,7 @@ export function AIInsightPanel({ open, onClose }: { open: boolean; onClose: () =
                 </div>
                 <div>
                   <div className="text-sm font-semibold text-white">AI Insight Panel</div>
-                  <div className="text-[11px] text-slate-500">Live risk intelligence</div>
+                  <div className="text-[11px] text-slate-500">Live anomaly intelligence</div>
                 </div>
               </div>
               <Button variant="ghost" size="icon" aria-label="Close AI panel" onClick={onClose}>

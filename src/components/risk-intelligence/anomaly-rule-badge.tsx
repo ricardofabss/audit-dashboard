@@ -109,40 +109,20 @@ export const ruleMetadata: Record<string, { name: string; description: string }>
 
   // Otomotif
   O01: {
-    name: "Diskon Berlebihan",
-    description: "Diskon > batas otorisasi (> 8% OTR)"
+    name: "Indikasi Pending Sales",
+    description: "> 50% penjualan terjadi di 7 hari terakhir bulan berjalan"
   },
   O02: {
-    name: "Aging Stok Kendaraan",
-    description: "Unit > 90 hari di stock (dead stock)"
-  },
-  O03: {
-    name: "Pola Lonjakan Penjualan",
-    description: "Volume penjualan akhir bulan > 3x rata-rata harian"
+    name: "Dominasi Leasing pada Sales",
+    description: "> 60% penjualan kredit dikuasai oleh 1 perusahaan leasing"
   },
   O04: {
-    name: "Kecurangan Klaim Garansi",
-    description: "Klaim warranty > 3x per unit dalam 12 bulan"
+    name: "Ketimpangan Mekanik",
+    description: "Mekanik mengerjakan > 50% seluruh WO bengkel di cabangnya"
   },
   O05: {
-    name: "Anomali Markup Spare Part",
-    description: "Harga spare part > 25% di atas standar pabrikan"
-  },
-  O06: {
-    name: "Klaster Komplain Pelanggan",
-    description: "> 5 komplain dari salesman yang sama per bulan"
-  },
-  O07: {
-    name: "Penyalahgunaan Unit Test Drive",
-    description: "KM test drive unit > threshold bulanan"
-  },
-  O08: {
-    name: "Pola Kickback Pembiayaan",
-    description: "> 80% pembiayaan ke satu leasing tertentu"
-  },
-  O09: {
-    name: "Anomali Valuasi Tukar Tambah",
-    description: "Nilai tukar tambah > 15% dari harga pasaran"
+    name: "Indikasi Penipuan Identitas (Beda STNK)",
+    description: "Sales memiliki > 3 penjualan dengan nama STNK berbeda dari pembeli"
   }
 };
 

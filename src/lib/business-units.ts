@@ -109,7 +109,7 @@ export const sectorMeta: Record<SectorType, SectorMeta> = {
     labelId: "Otomotif",
     icon: "🚗",
     color: "#ef4444",
-    ruleCodes: ["O01", "O02", "O03", "O04", "O05", "O06", "O07", "O08", "O09"],
+    ruleCodes: ["O01", "O02", "O04", "O05"],
     entityLabels: {
       customer: { en: "Buyer", id: "Pembeli" },
       branch: { en: "Dealer/Showroom", id: "Dealer/Showroom" },

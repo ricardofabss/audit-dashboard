@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Building2, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { Building2, ArrowUpRight, ArrowDownRight, Minus, Sparkles, Loader2 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid,
@@ -10,8 +10,7 @@ import { motion } from "framer-motion";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslation } from "@/hooks/use-translation";
-import { getRiskData } from "@/lib/risk-mock-data";
-import { useBusinessUnitStore, useActiveSector } from "@/hooks/use-business-unit";
+import { useBusinessUnitStore, useActiveBU, useActiveSector } from "@/hooks/use-business-unit";
 import { sectorMeta } from "@/lib/business-units";
 import { RiskLevelIndicator } from "@/components/risk-intelligence/risk-level-indicator";
 import { RiskScoreGauge } from "@/components/risk-intelligence/risk-score-gauge";
@@ -23,10 +22,132 @@ const tooltipStyle = { contentStyle: { background: "#0b1739", border: "1px solid
 export default function BranchRiskPage() {
   const { t, language } = useTranslation();
   const activeBUId = useBusinessUnitStore((s) => s.activeBUId);
+  const activeBU = useActiveBU();
+  const validBUId = activeBU ? activeBU.id : null;
   const activeSector = useActiveSector();
-  const data = useMemo(() => getRiskData(activeBUId), [activeBUId]);
+  
+  const [data, setData] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<BranchRiskProfile | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiRecommendation, setAiRecommendation] = useState<string | null>(null);
+  const [execSummary, setExecSummary] = useState<string | null>(null);
+  const [execSummaryLoading, setExecSummaryLoading] = useState(false);
+
+  useEffect(() => {
+    if (data && !execSummary && !execSummaryLoading) {
+      setExecSummaryLoading(true);
+      
+      const branchSummaryData = data.branchRiskProfiles.map((b: any) => ({
+        cabang: b.branchName,
+        region: b.regionName,
+        skor: b.totalScore,
+        level: b.riskLevel,
+        anomali: b.anomalyCount
+      })).sort((a: any, b: any) => b.skor - a.skor).slice(0, 20); // Top 20 terburuk
+
+      fetch("/api/ai/summarize-branches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ branchSummaryData })
+      })
+      .then(res => res.json())
+      .then(result => {
+        if (result.summary) setExecSummary(result.summary);
+      })
+      .catch(err => console.error(err))
+      .finally(() => setExecSummaryLoading(false));
+    }
+  }, [data, execSummary, execSummaryLoading]);
+
+  const handleGenerateAI = async () => {
+    if (!selected || !data) return;
+    setAiLoading(true);
+    try {
+      // Dapatkan anomali khusus untuk cabang ini dari data real yang ada di frontend
+      const branchAnomalies = data.anomalyDetections
+        .filter((a: any) => a.outletCode === selected.outletCode)
+        .sort((a: any, b: any) => b.riskScore - a.riskScore)
+        .slice(0, 5)
+        .map((a: any) => `- [Score: ${a.riskScore}] ${a.ruleName}: ${a.description}`)
+        .join("\n");
+
+      // Buat dump database dari data real
+      const databaseDump = data.anomalyDetections.map((a: any) => ({
+        cabang: a.branchName,
+        rule: a.ruleName,
+        skor: a.riskScore,
+        status: a.status
+      }));
+
+      // Hitung top global patterns
+      const ruleFrequency: Record<string, {name: string, count: number}> = {};
+      data.anomalyDetections.forEach((a: any) => {
+        if (!ruleFrequency[a.ruleCode]) ruleFrequency[a.ruleCode] = { name: a.ruleName, count: 0 };
+        ruleFrequency[a.ruleCode].count++;
+      });
+      const topGlobalPatterns = Object.values(ruleFrequency)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3)
+        .map(p => `- ${p.name} (Terjadi ${p.count} kali secara nasional)`)
+        .join("\n");
+
+      const res = await fetch("/api/ai/investigate-branch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          branch: selected, 
+          branchAnomalies, 
+          databaseDump, 
+          topGlobalPatterns 
+        })
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.details || "Failed to generate AI recommendation");
+      }
+      const result = await res.json();
+      setAiRecommendation(result.recommendation);
+    } catch (err: any) {
+      console.error(err);
+      alert((language === "id" ? "Gagal memanggil AI: " : "Failed to call AI: ") + err.message);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+    setError(null);
+
+    const url = `/api/risk-intelligence` + (validBUId ? `?buId=${validBUId}&_t=${Date.now()}` : `?_t=${Date.now()}`);
+
+    fetch(url, { cache: 'no-store' })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch branch data");
+        return res.json();
+      })
+      .then((fetchedData) => {
+        if (isMounted) {
+          setData(fetchedData);
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        if (isMounted) {
+          setError(err.message || "Failed to load branch data");
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [validBUId]);
 
   // Dynamic terminology
   const branchLabel = useMemo(() => {
@@ -39,17 +160,19 @@ export default function BranchRiskPage() {
     return sectorMeta[activeSector].entityLabels.customer[language];
   }, [activeSector, language]);
 
-  const sorted = useMemo(() =>
-    [...data.branchRiskProfiles]
-      .sort((a, b) => b.totalScore - a.totalScore)
-      .filter(b => {
+  const sorted = useMemo(() => {
+    if (!data) return [];
+    return [...data.branchRiskProfiles]
+      .sort((a: any, b: any) => b.totalScore - a.totalScore)
+      .filter((b: any) => {
         if (search && !b.outletName.toLowerCase().includes(search.toLowerCase()) && !b.branchName.toLowerCase().includes(search.toLowerCase())) return false;
         return true;
-      })
-  , [search, data]);
+      });
+  }, [search, data]);
 
   // Bar chart comparison data
   const comparisonData = useMemo(() => {
+    if (!data) return [];
     const avgByRegion = new Map<string, { sum: number; count: number }>();
     for (const b of data.branchRiskProfiles) {
       const entry = avgByRegion.get(b.regionName) || { sum: 0, count: 0 };
@@ -86,13 +209,36 @@ export default function BranchRiskPage() {
   return (
     <div className="space-y-4 pb-10">
       <PageHeader
-        title={language === "id" ? `Kecerdasan Risiko ${branchLabel}` : `${branchLabel} Risk Intelligence`}
+        title={language === "id" ? `Kecerdasan Anomali ${branchLabel}` : `${branchLabel} Anomaly Intelligence`}
         subtitle={language === "id" ? `Papan peringkat risiko ${branchLabel.toLowerCase()}, analisis komparatif, kepadatan anomali, dan tren historis.` : `${branchLabel} risk leaderboard, comparative analysis, anomaly density, and historical trends.`}
         actions={[
           { label: t("ri.btnCompare"), variant: "default", onClick: handleCompare },
           { label: t("ri.btnDrillDown"), onClick: handleDrillDown },
         ]}
       />
+
+      {/* Executive AI Summary */}
+      {(execSummaryLoading || execSummary) && (
+        <Card className="border-cyan-500/30 bg-gradient-to-br from-[#0f172a] to-[#0b1739] shadow-lg shadow-cyan-500/5 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+            <Sparkles className="w-24 h-24 text-cyan-400" />
+          </div>
+          <CardContent className="p-5 flex gap-4 items-start relative z-10">
+            <div className="mt-1 flex-shrink-0 bg-cyan-500/20 p-2 rounded-lg border border-cyan-500/30">
+              {execSummaryLoading ? <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" /> : <Sparkles className="w-5 h-5 text-cyan-400" />}
+            </div>
+            <div className="flex-1 space-y-1">
+              <h3 className="font-semibold text-cyan-50 text-sm flex items-center gap-2">
+                Executive AI Summary
+                {execSummaryLoading && <span className="text-[10px] uppercase tracking-wider text-cyan-400/70 font-mono bg-cyan-950 px-2 py-0.5 rounded-full border border-cyan-800">Generating...</span>}
+              </h3>
+              <div className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap max-w-4xl">
+                {execSummaryLoading ? "Sedang mengevaluasi kondisi seluruh cabang secara nasional..." : execSummary}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Comparison Chart */}
       <Card>
@@ -125,10 +271,10 @@ export default function BranchRiskPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overflow-y-auto max-h-[600px] scrollbar-thin">
               <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/10 text-left">
+                <thead className="sticky top-0 bg-[#0b1739] z-10 shadow-[0_1px_0_0_rgba(255,255,255,0.1)]">
+                  <tr className="text-left">
                     <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">#</th>
                     <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{branchLabel}</th>
                     <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{t("ri.region")}</th>
@@ -148,7 +294,10 @@ export default function BranchRiskPage() {
                       animate={{ opacity: 1 }}
                       transition={{ delay: idx * 0.02 }}
                       className={`border-b border-white/5 cursor-pointer transition ${selected?.id === b.id ? "bg-cyan-500/10" : "hover:bg-white/[0.02]"}`}
-                      onClick={() => setSelected(b)}
+                      onClick={() => {
+                        setSelected(b);
+                        setAiRecommendation(null);
+                      }}
                     >
                       <td className="px-3 py-2.5 text-xs text-slate-500 font-mono">{idx + 1}</td>
                       <td className="px-3 py-2.5">
@@ -209,6 +358,31 @@ export default function BranchRiskPage() {
                       <div className="text-[10px] text-slate-500">{t("ri.portfolio")}</div>
                     </div>
                   </div>
+
+                  {/* AI Investigator Button */}
+                  <div className="w-full mt-4">
+                    <button
+                      onClick={handleGenerateAI}
+                      disabled={aiLoading}
+                      className="w-full flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-cyan-500/20 hover:from-cyan-400 hover:to-blue-400 disabled:opacity-50 transition-all"
+                    >
+                      {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                      {language === "id" ? "Analisis Kesehatan Cabang & Rencana Audit" : "Analyze Branch Health & Audit Plan"}
+                    </button>
+                  </div>
+
+                  {aiRecommendation && (
+                    <div className="w-full mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-4 shadow-inner backdrop-blur-md">
+                      <div className="flex items-center gap-2 mb-3 border-b border-white/10 pb-2">
+                        <Sparkles className="h-4 w-4 text-cyan-400" />
+                        <h4 className="font-semibold text-sm text-cyan-50">AI Investigator Insight</h4>
+                      </div>
+                      <div className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+                        {aiRecommendation}
+                      </div>
+                    </div>
+                  )}
+                  
                 </CardContent>
               </Card>
 

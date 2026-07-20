@@ -20,6 +20,8 @@ import {
   UserCog,
   Users,
   Zap,
+  Presentation,
+  BarChart3,
 } from "lucide-react";
 import type { ComponentType } from "react";
 import type { PermissionCode } from "@/types/auth";
@@ -43,7 +45,14 @@ export const navGroups = [
     ] as NavItem[],
   },
   {
-    label: "Risk Intelligence",
+    label: "Reporting",
+    items: [
+      { label: "Report Dashboard", href: "/report-dashboard", icon: BarChart3, permission: "dashboard.read" },
+      { label: "Monthly Reports", href: "/monthly-reports", icon: Presentation, permission: "dashboard.read" },
+    ] as NavItem[],
+  },
+  {
+    label: "Anomaly Intelligence",
     items: [
       { label: "Risk Dashboard", href: "/risk-intelligence", icon: Activity },
       { label: "Anomaly Monitor", href: "/risk-intelligence/anomalies", icon: Zap },
@@ -67,7 +76,7 @@ export const navGroups = [
     label: "Workspace",
     items: [
       { label: "Document Center", href: "/documents", icon: Archive },
-      { label: "AI Assistant", href: "/ai", icon: Bot },
+      { label: "AI Forecasting", href: "/ai-forecasting", icon: Bot },
       { label: "Notifications", href: "/notifications", icon: Bell },
       { label: "User Management", href: "/users", icon: Users, permission: "users.manage" },
       { label: "Settings", href: "/settings", icon: Settings, permission: "settings.manage" },

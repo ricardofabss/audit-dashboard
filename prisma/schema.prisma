@@ -203,6 +203,7 @@ model ContractLifecycleEvent {
   sourceSystem         String                     @map("source_system")
   sourceSheet          String                     @map("source_sheet")
   sourceEventKey       String                     @unique @map("source_event_key")
+  metadata             Json?
   createdAt            DateTime                   @default(now()) @map("created_at")
   updatedAt            DateTime                   @updatedAt @map("updated_at")
   deletedAt            DateTime?                  @map("deleted_at")
@@ -309,6 +310,8 @@ model AuditProject {
   status    String
   progress  Int      @default(0)
   risk      String
+  period    String?
+  dueDate   String?  @map("due_date")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -321,13 +324,19 @@ model AuditFinding {
   title     String
   branch    String
   owner     String
-  severity  String
-  status    String
-  sla       String
-  progress  Int      @default(0)
-  risk      Int      @default(0)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  severity    String
+  status      String
+  sla         String
+  dueDate     String?  @map("due_date")
+  progress    Int      @default(0)
+  risk        Int      @default(0)
+  description String?
+  category    String?
+  actionPlan  String?  @map("action_plan")
+  auditId     String?  @map("audit_id")
+  auditName   String?  @map("audit_name")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("audit_findings")
 }
@@ -398,4 +407,30 @@ model MonthlyReport {
 
   @@unique([reportMonth, buCode])
   @@map("monthly_reports")
+}
+
+model GranularMonthlyBUReport {
+  id              String   @id @default(uuid()) @db.Uuid
+  bisnisUnit      String   @map("bisnis_unit")
+  periode         String
+  cabangArea      String   @map("cabang_area")
+  noaAktif        Int      @default(0) @map("noa_aktif")
+  noaAudit        Int      @default(0) @map("noa_audit")
+  noaBelumAudit   Int      @default(0) @map("noa_belum_audit")
+  pctNoaAudit     Float    @default(0) @map("pct_noa_audit")
+  aumAktif        BigInt   @default(0) @map("aum_aktif")
+  aumAudit        BigInt   @default(0) @map("aum_audit")
+  aumBelumAudit   BigInt   @default(0) @map("aum_belum_audit")
+  pctAumAudit           Float    @default(0) @map("pct_aum_audit")
+  auditorLapangan       Int      @default(0) @map("auditor_lapangan")
+  mpp2026               Int      @default(0) @map("mpp_2026")
+  mppAuditorLapangan    Int      @default(0) @map("mpp_auditor_lapangan")
+  noaAuditBulanBerjalan Int      @default(0) @map("noa_audit_bulan_berjalan")
+  noaProductivityBulan  Float    @default(0) @map("noa_productivity_bulan")
+  rawData               Json?    @map("raw_data")
+  uploadedAt            DateTime @default(now()) @map("uploaded_at")
+
+  @@index([bisnisUnit])
+  @@index([periode])
+  @@map("granular_monthly_bu_reports")
 }

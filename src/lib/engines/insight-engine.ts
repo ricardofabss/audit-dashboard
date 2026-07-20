@@ -257,7 +257,7 @@ export function generateInsights(ctx: InsightContext): RiskInsight[] {
           entityType: "SYSTEM",
           severity: template.severity,
           category: template.category,
-          confidence: 80 + Math.floor(Math.random() * 18),
+          confidence: 80 + (idx % 18),
           isRead: false,
           actionTaken: false,
           generatedAt: now,
@@ -287,5 +287,5 @@ export function generateExecutiveSummary(ctx: InsightContext): string {
     ctx.branches.reduce((s, b) => s + b.totalScore, 0) / Math.max(1, ctx.branches.length),
   );
 
-  return `Risk Intelligence Summary: ${totalAnomalies} active anomalies detected across ${ctx.branches.length} monitored branches. ${criticalCustomers} customers at critical risk level. ${highRiskBranches} branches classified as high/critical. Average branch risk score: ${avgBranchScore}/100.`;
+  return `Anomaly Intelligence Summary: ${totalAnomalies} active anomalies detected across ${ctx.branches.length} monitored branches. ${criticalCustomers} customers at critical risk level. ${highRiskBranches} branches classified as high/critical. Average branch risk score: ${avgBranchScore}/100.`;
 }

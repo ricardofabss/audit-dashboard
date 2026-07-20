@@ -85,8 +85,8 @@ export default function DocumentsPage() {
         </CardHeader>
         <CardContent>
           <ModuleTable headers={["Document", "Type", "Version", "Owner", "Modified", "Actions"]}>
-            {filteredDocs.map((item) => (
-              <tr key={item.name} className="border-b border-white/5 hover:bg-white/[0.02] transition">
+            {filteredDocs.map((item, idx) => (
+              <tr key={item.id || `${item.name}-${idx}`} className="border-b border-white/5 hover:bg-white/[0.02] transition">
                 <TableCell className="font-medium text-white">{item.name}</TableCell>
                 <TableCell className="text-slate-300">{item.type}</TableCell>
                 <TableCell className="text-slate-300">{item.version}</TableCell>
@@ -96,7 +96,7 @@ export default function DocumentsPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => deleteDocument(item.name)}
+                    onClick={() => deleteDocument(item.id)}
                     className="h-8 w-8 text-slate-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition"
                     title="Delete document"
                   >

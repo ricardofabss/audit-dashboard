@@ -1,14 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { UserCog, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { motion } from "framer-motion";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslation } from "@/hooks/use-translation";
-import { getRiskData } from "@/lib/risk-mock-data";
-import { useBusinessUnitStore, useActiveSector } from "@/hooks/use-business-unit";
+import { useBusinessUnitStore, useActiveBU, useActiveSector } from "@/hooks/use-business-unit";
 import { sectorMeta } from "@/lib/business-units";
 import { RiskLevelIndicator } from "@/components/risk-intelligence/risk-level-indicator";
 import { RiskScoreGauge } from "@/components/risk-intelligence/risk-score-gauge";
@@ -20,10 +19,45 @@ const tooltipStyle = { contentStyle: { background: "#0b1739", border: "1px solid
 export default function OfficerRiskPage() {
   const { t, language } = useTranslation();
   const activeBUId = useBusinessUnitStore((s) => s.activeBUId);
+  const activeBU = useActiveBU();
+  const validBUId = activeBU ? activeBU.id : null;
   const activeSector = useActiveSector();
-  const data = useMemo(() => getRiskData(activeBUId), [activeBUId]);
+  const [data, setData] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<OfficerRiskProfile | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+    setError(null);
+
+    const url = `/api/risk-intelligence` + (validBUId ? `?buId=${validBUId}&_t=${Date.now()}` : `?_t=${Date.now()}`);
+
+    fetch(url, { cache: 'no-store' })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch officer data");
+        return res.json();
+      })
+      .then((fetchedData) => {
+        if (isMounted) {
+          setData(fetchedData);
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        if (isMounted) {
+          setError(err.message || "Failed to load officer data");
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [validBUId]);
 
   // Dynamic terminology
   const officerLabel = useMemo(() => {
@@ -36,14 +70,15 @@ export default function OfficerRiskPage() {
     return sectorMeta[activeSector].entityLabels.branch[language];
   }, [activeSector, language]);
 
-  const sorted = useMemo(() =>
-    [...data.officerRiskProfiles]
-      .sort((a, b) => b.totalScore - a.totalScore)
-      .filter(o => {
+  const sorted = useMemo(() => {
+    if (!data) return [];
+    return [...data.officerRiskProfiles]
+      .sort((a: any, b: any) => b.totalScore - a.totalScore)
+      .filter((o: any) => {
         if (search && !o.officerName.toLowerCase().includes(search.toLowerCase())) return false;
         return true;
-      })
-  , [search, data]);
+      });
+  }, [search, data]);
 
   const topOfficerChart = useMemo(() =>
     sorted.slice(0, 12).map(o => ({
@@ -70,10 +105,31 @@ export default function OfficerRiskPage() {
     document.body.removeChild(element);
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-500 border-t-transparent"></div>
+          <p className="text-sm text-slate-400">Loading {officerLabel} data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-red-400">
+          <p>Error: {error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 pb-10">
       <PageHeader
-        title={language === "id" ? `Kecerdasan Risiko ${officerLabel}` : `${officerLabel} Risk Intelligence`}
+        title={language === "id" ? `Kecerdasan Anomali ${officerLabel}` : `${officerLabel} Anomaly Intelligence`}
         subtitle={language === "id" ? `Peringkat risiko ${officerLabel.toLowerCase()}, analisis celah pengawasan, dan metrik penanganan anomali.` : `${officerLabel} risk ranking, supervisory gap analysis, and anomaly handling metrics.`}
         actions={[
           { label: t("ri.btnReviewOfficer"), variant: "default", onClick: handleReviewOfficer },
@@ -114,10 +170,10 @@ export default function OfficerRiskPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overflow-y-auto max-h-[600px] scrollbar-thin">
               <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/10 text-left">
+                <thead className="sticky top-0 bg-[#0b1739] z-10 shadow-[0_1px_0_0_rgba(255,255,255,0.1)]">
+                  <tr className="text-left">
                     <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">#</th>
                     <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{officerLabel}</th>
                     <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{t("ri.position")}</th>

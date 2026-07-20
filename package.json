@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
@@ -16,6 +16,7 @@
     "etl:weekly:gadai": "node scripts/etl/weekly_gadai_mas.mjs"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.21.0",
     "@hookform/resolvers": "^5.2.2",
     "@prisma/client": "^6.19.0",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -38,6 +39,7 @@
     "react-hook-form": "^7.75.0",
     "recharts": "^3.8.1",
     "tailwind-merge": "^3.6.0",
+    "xlsx": "^0.18.5",
     "zod": "^4.4.3",
     "zustand": "^5.0.13"
   },

@@ -23,6 +23,7 @@ export default function ExecutionPage() {
   const [fileName, setFileName] = useState("");
   const [isExtracting, setIsExtracting] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<"Active" | "Completed" | "All">("Active");
 
   const handleOpenUpload = (auditId: string) => {
     setSelectedAuditId(auditId);
@@ -188,10 +189,31 @@ export default function ExecutionPage() {
                   <h3 className="font-semibold text-slate-200">Daftar Pemeriksaan</h3>
                   <p className="text-[11px] text-slate-500 uppercase tracking-wider">{activeAudits.length} Items</p>
                 </div>
+                <div className="ml-auto flex items-center bg-white/5 border border-white/10 rounded-lg p-1">
+                  {(["Active", "Completed", "All"] as const).map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => setStatusFilter(status)}
+                      className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                        statusFilter === status
+                          ? "bg-cyan-500/20 text-cyan-400 shadow-sm"
+                          : "text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="p-0">
+              <div className="p-0 max-h-[500px] overflow-y-auto relative">
                 <ModuleTable headers={[t("exec.colName"), t("exec.colPeriod"), t("exec.colDueDate"), t("exec.colStatus"), t("exec.colActions")]}>
-                  {activeAudits.map((item) => (
+                  {activeAudits
+                    .filter(a => {
+                      if (statusFilter === "All") return true;
+                      if (statusFilter === "Completed") return a.status === "Completed" || a.progress === 100;
+                      return a.status !== "Completed" && a.progress < 100;
+                    })
+                    .map((item) => (
                     <tr key={item.id} className="border-b border-white/5 hover:bg-white/[0.02] transition">
                       <TableCell>
                         <div className="font-medium text-white">{item.name}</div>

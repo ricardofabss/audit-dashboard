@@ -20,6 +20,7 @@ export default function FollowUpPage() {
   const [progressVal, setProgressVal] = useState("0");
   const [mitigationResponse, setMitigationResponse] = useState("");
   const [activeTab, setActiveTab] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<"Active" | "Completed" | "All">("Active");
 
   const handleOpenUpdate = (finding: typeof findings[0]) => {
     setSelectedFinding(finding);
@@ -120,11 +121,28 @@ export default function FollowUpPage() {
           {/* Right Content for Active Branch */}
           <div className="md:col-span-3 space-y-6 animate-in fade-in duration-300">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <h2 className="text-xl font-semibold text-white tracking-tight">{actualActiveTab}</h2>
-              <Badge tone="slate" className="font-mono">{Object.keys(activeAudits).length} Audits</Badge>
+              <div className="flex items-center gap-4">
+                <h2 className="text-xl font-semibold text-white tracking-tight">{actualActiveTab}</h2>
+                <Badge tone="slate" className="font-mono">{Object.keys(activeAudits).length} Audits</Badge>
+              </div>
+              <div className="flex items-center bg-white/5 border border-white/10 rounded-lg p-1">
+                {(["Active", "Completed", "All"] as const).map((status) => (
+                  <button
+                    key={status}
+                    onClick={() => setStatusFilter(status)}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                      statusFilter === status
+                        ? "bg-cyan-500/20 text-cyan-400 shadow-sm"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    {status}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-6 max-h-[600px] overflow-y-auto relative pr-2">
               {Object.entries(activeAudits).map(([auditName, items]) => (
                 <div key={auditName} className="rounded-2xl border border-white/10 bg-[#0a1120] overflow-hidden shadow-lg">
                   <div className="bg-white/[0.02] border-b border-white/5 px-5 py-4 flex items-center gap-3">
@@ -138,7 +156,14 @@ export default function FollowUpPage() {
                   </div>
                   <div className="p-0">
                     <ModuleTable headers={["Finding ID", "Action Plan", "Owner", "Due Date", "Progress", "State", "Actions"]}>
-                      {items.map((item, idx) => (
+                      {items
+                        .filter(item => {
+                          if (statusFilter === "All") return true;
+                          const isCompleted = item.progress === 100;
+                          if (statusFilter === "Completed") return isCompleted;
+                          return !isCompleted;
+                        })
+                        .map((item, idx) => (
                         <tr
                           key={item.id}
                           className="border-b border-white/5 hover:bg-white/[0.02] transition"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { Zap } from "lucide-react";
+import { Zap, Sparkles } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -11,9 +11,8 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslation } from "@/hooks/use-translation";
 
-import { useBusinessUnitStore } from "@/hooks/use-business-unit";
+import { useBusinessUnitStore, useActiveBU } from "@/hooks/use-business-unit";
 import { AnomalyRuleBadge, getAnomalyRuleColor } from "@/components/risk-intelligence/anomaly-rule-badge";
-import { RiskLevelIndicator } from "@/components/risk-intelligence/risk-level-indicator";
 import type { AnomalyRuleCode, AnomalyStatus, RiskMockDataSet } from "@/types/risk-intelligence";
 
 const tooltipStyle = { contentStyle: { background: "#0b1739", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "8px", fontSize: "12px" } };
@@ -25,18 +24,23 @@ const statusColors: Record<AnomalyStatus, string> = {
 export default function AnomalyMonitorPage() {
   const { t, language } = useTranslation();
   const activeBUId = useBusinessUnitStore((s) => s.activeBUId);
+  const activeBU = useActiveBU();
+  const validBUId = activeBU ? activeBU.id : null;
   const [data, setData] = useState<RiskMockDataSet | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [aiRecommendations, setAiRecommendations] = useState<Record<string, string>>({});
+  const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
     setError(null);
 
-    const url = `/api/risk-intelligence` + (activeBUId ? `?buId=${activeBUId}` : "");
+    const url = `/api/risk-intelligence` + (validBUId ? `?buId=${validBUId}&_t=${Date.now()}` : `?_t=${Date.now()}`);
 
-    fetch(url)
+    fetch(url, { cache: 'no-store' })
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch anomaly data");
         return res.json();
@@ -58,11 +62,13 @@ export default function AnomalyMonitorPage() {
     return () => {
       isMounted = false;
     };
-  }, [activeBUId]);
+  }, [validBUId]);
 
   const [filterRule, setFilterRule] = useState<AnomalyRuleCode | "ALL">("ALL");
   const [filterStatus, setFilterStatus] = useState<AnomalyStatus | "ALL">("ALL");
   const [search, setSearch] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
@@ -71,9 +77,13 @@ export default function AnomalyMonitorPage() {
       if (filterRule !== "ALL" && a.ruleCode !== filterRule) return false;
       if (filterStatus !== "ALL" && a.status !== filterStatus) return false;
       if (search && !a.entityName.toLowerCase().includes(search.toLowerCase()) && !a.description.toLowerCase().includes(search.toLowerCase())) return false;
+      
+      if (startDate && a.detectedAt < startDate) return false;
+      if (endDate && a.detectedAt > endDate) return false;
+
       return true;
     });
-  }, [filterRule, filterStatus, search, data]);
+  }, [filterRule, filterStatus, search, startDate, endDate, data]);
 
   const ruleDistribution = useMemo(() => {
     if (!data) return [];
@@ -105,14 +115,116 @@ export default function AnomalyMonitorPage() {
   };
 
   const handleExportAnomalies = () => {
+    if (!filtered || filtered.length === 0) {
+      alert(language === "id" ? "Tidak ada data untuk di-export." : "No data to export.");
+      return;
+    }
+
+    const headers = ["ID", "Rule Code", "Rule Name", "Sector", "Entity Type", "Entity ID", "Entity Name", "Outlet", "Risk Score", "Status", "Date", "Description"];
+    const rows = filtered.map(a => [
+      a.id,
+      a.ruleCode,
+      `"${a.ruleName.replace(/"/g, '""')}"`,
+      a.sector || "",
+      a.entityType,
+      a.entityId,
+      `"${a.entityName.replace(/"/g, '""')}"`,
+      `"${(a.outletName || a.branchName || "").replace(/"/g, '""')}"`,
+      a.riskScore,
+      a.status,
+      a.detectedAt,
+      `"${a.description.replace(/"/g, '""')}"`
+    ]);
+
+    // Build HTML table for Excel (.xls)
+    let htmlContent = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">`;
+    htmlContent += `<head><meta charset="utf-8" /><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Ringkasan Anomali</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>`;
+    htmlContent += `<body><table border="1">`;
+    
+    // Headers
+    htmlContent += `<tr>` + headers.map(h => `<th style="background-color: #f2f2f2;">${h}</th>`).join("") + `</tr>`;
+
+    // Rows
+    for (const r of rows) {
+      htmlContent += `<tr>` + r.map(c => `<td>${c}</td>`).join("") + `</tr>`;
+    }
+
+    htmlContent += `</table></body></html>`;
+
+    const file = new Blob([htmlContent], { type: "application/vnd.ms-excel;charset=utf-8;" });
     const element = document.createElement("a");
-    const content = `AuditSphere AI - Anomaly Register Report\n======================================\nGenerated: ${new Date().toLocaleString()}\n\nRegistered Anomaly Rules: ${ruleKeys.length}\nActive Status Categories: ${statusKeys.join(", ")}`;
-    const file = new Blob([content], { type: "text/plain" });
     element.href = URL.createObjectURL(file);
-    element.download = "Anomalies_Register.txt";
+    element.download = `Anomalies_Summary_Export_${new Date().toISOString().slice(0,10)}.xls`;
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
+  };
+
+  const handleExportRawData = async () => {
+    if (!filtered || filtered.length === 0) {
+      alert(language === "id" ? "Tidak ada data anomali untuk diexport." : "No anomaly data to export.");
+      return;
+    }
+
+    // Collect all unique transaction IDs from the filtered anomalies
+    const txIds = new Set<string>();
+    for (const a of filtered) {
+      if (a.metadata && Array.isArray(a.metadata.involvedTxIds)) {
+        for (const id of a.metadata.involvedTxIds) {
+          txIds.add(id);
+        }
+      }
+    }
+
+    if (txIds.size === 0) {
+      alert(language === "id" ? "Data transaksi mentah tidak tersedia untuk anomali yang dipilih." : "Raw transaction data is not available for the selected anomalies.");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/risk-intelligence/export-raw", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ txIds: Array.from(txIds), buId: validBUId })
+      });
+
+      if (!response.ok) throw new Error("Failed to export raw data");
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const element = document.createElement("a");
+      element.href = url;
+      element.download = `Anomalies_RAW_Transactions_${new Date().toISOString().slice(0,10)}.xls`;
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert(language === "id" ? "Gagal mengexport data mentah." : "Failed to export raw data.");
+    }
+  };
+
+  const handleGenerateAI = async (anomaly: any) => {
+    setAiLoading(prev => ({ ...prev, [anomaly.id]: true }));
+    try {
+      const res = await fetch("/api/ai/investigate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ anomaly })
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.details || "Failed to generate AI recommendation");
+      }
+      const result = await res.json();
+      setAiRecommendations(prev => ({ ...prev, [anomaly.id]: result.recommendation }));
+    } catch (err: any) {
+      console.error(err);
+      alert((language === "id" ? "Gagal memanggil AI Investigator: " : "Failed to call AI Investigator: ") + err.message);
+    } finally {
+      setAiLoading(prev => ({ ...prev, [anomaly.id]: false }));
+    }
   };
 
   if (isLoading && !data) {
@@ -147,8 +259,8 @@ export default function AnomalyMonitorPage() {
         title={t("ri.anomalyTitle")}
         subtitle={t("ri.anomalySubtitle")}
         actions={[
-          { label: t("ri.btnFilterRules"), variant: "default", onClick: handleFilterRules },
-          { label: t("ri.btnExportAnomalies"), onClick: handleExportAnomalies },
+          { label: language === "id" ? "Export (Ringkasan)" : "Export (Summary)", variant: "default", onClick: handleExportAnomalies },
+          { label: language === "id" ? "Export (Raw Data)" : "Export (Raw Data)", variant: "outline", onClick: handleExportRawData },
         ]}
       />
 
@@ -203,6 +315,19 @@ export default function AnomalyMonitorPage() {
             <CardTitle>{t("ri.anomalyRegister")}</CardTitle>
             <div className="ml-auto flex flex-wrap items-center gap-2">
               <input
+                type="date"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+                className="h-8 rounded-lg border border-white/10 bg-white/[0.04] px-2 text-xs text-slate-100 outline-none focus:border-cyan-400/50"
+              />
+              <span className="text-slate-500 text-xs">-</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+                className="h-8 rounded-lg border border-white/10 bg-white/[0.04] px-2 text-xs text-slate-100 outline-none focus:border-cyan-400/50"
+              />
+              <input
                 type="text"
                 placeholder={t("ri.search")}
                 value={search}
@@ -221,10 +346,10 @@ export default function AnomalyMonitorPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-auto max-h-[600px] scrollbar-thin">
             <table className="w-full text-sm table-fixed">
-              <thead>
-                <tr className="border-b border-white/10 text-left">
+              <thead className="sticky top-0 bg-[#0b1739] z-10 shadow-[0_1px_0_0_rgba(255,255,255,0.1)]">
+                <tr className="text-left">
                   <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 w-[15%]">Rule</th>
                   <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 w-[35%]">Entity</th>
                   <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 w-[20%]">{t("ri.outlet")}</th>
@@ -294,6 +419,49 @@ export default function AnomalyMonitorPage() {
                                       </div>
                                     </div>
                                   )}
+
+                                  {/* AI Investigation Panel */}
+                                  <div className="mt-4 pt-4 border-t border-white/5">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <div className="flex items-center gap-2">
+                                        <Sparkles className="h-4 w-4 text-cyan-400" />
+                                        <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                                          AI Investigator Insight
+                                        </span>
+                                      </div>
+                                      {!aiRecommendations[a.id] && !aiLoading[a.id] && (
+                                        <button
+                                          onClick={() => handleGenerateAI(a)}
+                                          className="text-[10px] font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-3 py-1 rounded-full hover:bg-cyan-500/30 transition-colors"
+                                        >
+                                          {language === "id" ? "Analisis Sejarah & Buat Rencana" : "Analyze History & Plan"}
+                                        </button>
+                                      )}
+                                    </div>
+                                    
+                                    {aiLoading[a.id] && (
+                                      <div className="rounded-lg bg-cyan-950/30 border border-cyan-900/50 p-4 flex items-center justify-center space-x-2">
+                                        <div className="w-2 h-2 bg-cyan-500 rounded-full animate-ping"></div>
+                                        <div className="w-2 h-2 bg-cyan-400 rounded-full animate-ping" style={{ animationDelay: '0.2s' }}></div>
+                                        <div className="w-2 h-2 bg-cyan-300 rounded-full animate-ping" style={{ animationDelay: '0.4s' }}></div>
+                                        <span className="text-xs font-medium text-cyan-500 ml-2">
+                                          {language === "id" ? "AI sedang membaca seluruh database historis..." : "AI is reading full historical database..."}
+                                        </span>
+                                      </div>
+                                    )}
+
+                                    {aiRecommendations[a.id] && !aiLoading[a.id] && (
+                                      <div className="rounded-lg bg-gradient-to-br from-cyan-950/40 to-slate-900/40 border border-cyan-800/50 p-4 shadow-inner shadow-cyan-900/20">
+                                        <div className="whitespace-pre-wrap text-xs text-slate-200 leading-relaxed font-sans">
+                                          {aiRecommendations[a.id].split('\\n').map((line, i) => (
+                                            <p key={i} className={line.startsWith('-') ? 'ml-4 my-1' : 'mb-2'}>
+                                              {line.replace(/\\*\\*/g, '')}
+                                            </p>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
                                 </motion.div>
                               </td>
                             </tr>

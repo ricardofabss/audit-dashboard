@@ -12,7 +12,7 @@ export function ActivityStream() {
       <CardHeader>
         <CardTitle>Recent Activities</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-2 max-h-[350px] overflow-y-auto pr-2">
         {activities.map((item, idx) => (
           <div key={`${item.title}-${idx}`} className="rounded-lg border border-white/10 bg-black/20 p-3">
             <div className="mb-1 flex items-center justify-between">

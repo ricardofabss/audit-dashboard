@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 import { db } from "@/lib/db";
 import { runAnomalyDetection } from "@/lib/engines/anomaly-engine";
-import { getRiskData, getMockDataForBU } from "@/lib/risk-mock-data";
+import { getRiskData, getMockDataForBU, getConsolidatedMockData, clearMockCache } from "@/lib/risk-mock-data";
 import type {
   AnomalyRule,
   AnomalyDetection,
@@ -140,35 +142,45 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const buId = searchParams.get("buId");
-
-    // Retrieve the active rules for this BU
+    
+    console.log(`[API risk-intelligence] Received request. url=${request.url}, buId=${buId}`);
+    // Force clear cache in development to fix any lingering poisoned state
+    if (process.env.NODE_ENV === "development") {
+      clearMockCache();
+    }
     const mockDataSet = getRiskData(buId);
     const rules = mockDataSet.anomalyRules;
 
     // Query database events
-    // If it's a specific non-pawnshop BU, database might not have records yet,
-    // so we can fall back to mock data to keep the dashboard populated.
-    const isPawnshop = !buId || buId === "bu-pg-gmn" || buId === "bu-pg-gms";
-
-    if (!isPawnshop) {
-      // Fallback for multifinance/automotive if no data in db
-      return NextResponse.json(getMockDataForBU(buId));
-    }
+    // We no longer skip non-pawnshop sectors if they have database records.
+    // The query below will fetch them.
 
     // Fetch live events from database
     const dbEvents = await db.contractLifecycleEvent.findMany({
       where: {
         deletedAt: null,
+        ...(buId ? { businessUnit: buId } : {}),
       },
       orderBy: [
         { eventDate: "desc" },
       ],
-      take: 2000, // limit to recent 2000 events for query performance
+      take: 20000, // increased limit for otomotif data
     });
 
     if (dbEvents.length === 0) {
-      // If DB is completely empty (e.g. before initial import), use mock data
-      return NextResponse.json(mockDataSet);
+      // If DB is completely empty (e.g. before initial import), return empty data
+      // but keep the rules so the UI knows what they are.
+      return NextResponse.json({
+        anomalyRules: rules,
+        anomalyDetections: [],
+        customerRiskProfiles: [],
+        branchRiskProfiles: [],
+        officerRiskProfiles: [],
+        riskScoreHistory: [],
+        riskInsights: [],
+        riskTrends: [],
+        anomalyTrends: [],
+      });
     }
 
     // Map database events to the TransactionInput shape expected by the anomaly engine
@@ -206,6 +218,7 @@ export async function GET(request: NextRequest) {
       }
 
       return {
+        id: e.id,
         contractNo: e.contractNo,
         rootContractNo: e.rootContractNo,
         customerId: custId,
@@ -228,26 +241,194 @@ export async function GET(request: NextRequest) {
         disbursementDate: e.disbursementDate ? e.disbursementDate.toISOString().split("T")[0] : undefined,
         settlementDate: e.settlementDate ? e.settlementDate.toISOString().split("T")[0] : undefined,
         settlementStatus: e.settlementStatus || undefined,
+        rawMetadata: (e as any).metadata || undefined,
       };
     });
 
+    // Debug: log sample transaction metadata for the first 3 transactions
+    console.log(`[API risk-intelligence] buId=${buId}, dbEvents=${dbEvents.length}, transactions=${transactions.length}`);
+    if (transactions.length > 0) {
+      const sample = transactions[0];
+      console.log(`[API risk-intelligence] Sample tx: eventDate=${sample.eventDate}, outletCode=${sample.outletCode}, rawMetadata keys=${sample.rawMetadata ? Object.keys(sample.rawMetadata).join(',') : 'NONE'}`);
+      if (sample.rawMetadata) {
+        console.log(`[API risk-intelligence] Sample rawMetadata: Salesforce=${sample.rawMetadata['Salesforce']}, Cash/Credit=${sample.rawMetadata['Cash / Credit']}, Customer Name=${sample.rawMetadata['Customer Name']}, Nama STNK=${sample.rawMetadata['Nama STNK']}`);
+      }
+    }
+
     // Run the anomaly detection engine on real transactions
-    const rawDetections = runAnomalyDetection(transactions, rules);
+    // For OTOMOTIF rules, we inline the detection to bypass any HMR caching issues
+    const otomotifRuleCodes = new Set(["O01", "O02", "O04", "O05"]);
+    const otomotifRules = rules.filter(r => otomotifRuleCodes.has(r.code));
+    const nonOtomotifRules = rules.filter(r => !otomotifRuleCodes.has(r.code));
+    
+    // Run standard rules via imported engine
+    const rawDetections = runAnomalyDetection(transactions, nonOtomotifRules);
+    
+    // ── Inline OTOMOTIF detection ──────────────────────────────────
+    type InlineDetection = {
+      ruleCode: string; ruleName: string; sector: string; entityType: string;
+      entityId: string; entityName: string; riskScore: number; riskWeight: number;
+      outletCode: string; outletName: string; branchName: string;
+      metadata: Record<string, unknown>; description: string;
+    };
+    const inlineDetections: InlineDetection[] = [];
+
+    for (const rule of otomotifRules) {
+      if (!rule.isActive) continue;
+
+      if (rule.code === "O01") {
+        // Pending Sales Indication: > 50% sales in last 7 days of month per salesman
+        const byMonthSalesman = new Map<string, { total: number; spike: number; salesman: string; monthStr: string; outletCode: string; outletName: string; branchName: string, txIds: string[] }>();
+        for (const tx of transactions) {
+          const salesman = tx.rawMetadata?.['Salesforce'] as string | undefined;
+          if (!salesman) continue;
+          const dateStr = tx.eventDate;
+          if (!dateStr || dateStr.length < 10) continue;
+          const monthStr = dateStr.substring(0, 7);
+          const key = `${monthStr}_${salesman}`;
+          if (!byMonthSalesman.has(key)) {
+            byMonthSalesman.set(key, { total: 0, spike: 0, salesman, monthStr, outletCode: tx.outletCode, outletName: tx.outletName, branchName: tx.branchName, txIds: [] });
+          }
+          const group = byMonthSalesman.get(key)!;
+          group.total++;
+          const year = parseInt(dateStr.substring(0, 4));
+          const month = parseInt(dateStr.substring(5, 7));
+          const day = parseInt(dateStr.substring(8, 10));
+          const lastDayOfMonth = new Date(year, month, 0).getDate();
+          if (day > lastDayOfMonth - 7) {
+            group.spike++;
+            group.txIds.push(tx.id);
+          }
+        }
+        for (const group of byMonthSalesman.values()) {
+          if (group.total >= 5) {
+            const spikeRatio = group.spike / group.total;
+            if (spikeRatio > 0.5) {
+              inlineDetections.push({
+                ruleCode: "O01", ruleName: rule.name, sector: rule.sector, entityType: "OFFICER",
+                entityId: `SALES-${group.salesman}`, entityName: group.salesman,
+                riskScore: Math.min(100, rule.riskWeight * (spikeRatio / 0.5)), riskWeight: rule.riskWeight,
+                outletCode: group.outletCode, outletName: group.outletName, branchName: group.branchName,
+                metadata: { spikeRatio: (spikeRatio * 100).toFixed(1) + "%", spikeCount: group.spike, totalCount: group.total, month: group.monthStr, involvedTxIds: group.txIds },
+                description: `Indikasi pending sales: ${group.spike} dari ${group.total} unit (${(spikeRatio * 100).toFixed(1)}%) dijual pada 7 hari terakhir bulan ${group.monthStr}.`,
+              });
+            }
+          }
+        }
+      }
+
+      if (rule.code === "O02") {
+        // Leasing Dominance: > 60% credit sales dominated by 1 leasing per salesman
+        const salesmanLeasing = new Map<string, { totalCredit: number; leasingCounts: Record<string, number>; leasingTxIds: Record<string, string[]>; outletCode: string; outletName: string; branchName: string }>();
+        for (const tx of transactions) {
+          const salesman = tx.rawMetadata?.['Salesforce'] as string | undefined;
+          const cashOrCredit = (tx.rawMetadata?.['Cash / Credit'] as string) || '';
+          if (!salesman || !cashOrCredit || cashOrCredit.toLowerCase() === 'cash') continue;
+          if (!salesmanLeasing.has(salesman)) {
+            salesmanLeasing.set(salesman, { totalCredit: 0, leasingCounts: {}, leasingTxIds: {}, outletCode: tx.outletCode, outletName: tx.outletName, branchName: tx.branchName });
+          }
+          const group = salesmanLeasing.get(salesman)!;
+          group.totalCredit++;
+          group.leasingCounts[cashOrCredit] = (group.leasingCounts[cashOrCredit] || 0) + 1;
+          if (!group.leasingTxIds[cashOrCredit]) group.leasingTxIds[cashOrCredit] = [];
+          group.leasingTxIds[cashOrCredit].push(tx.id);
+        }
+        for (const [salesman, group] of salesmanLeasing.entries()) {
+          if (group.totalCredit >= 5) {
+            let maxLeasing = ""; let maxCount = 0;
+            for (const [leasing, count] of Object.entries(group.leasingCounts)) {
+              if (count > maxCount) { maxCount = count; maxLeasing = leasing; }
+            }
+            const dominanceRatio = maxCount / group.totalCredit;
+            if (dominanceRatio > 0.6) {
+              inlineDetections.push({
+                ruleCode: "O02", ruleName: rule.name, sector: rule.sector, entityType: "OFFICER",
+                entityId: `SALES-${salesman}`, entityName: salesman,
+                riskScore: Math.min(100, rule.riskWeight * (dominanceRatio / 0.6)), riskWeight: rule.riskWeight,
+                outletCode: group.outletCode, outletName: group.outletName, branchName: group.branchName,
+                metadata: { leasingCompany: maxLeasing, dominanceRatio: (dominanceRatio * 100).toFixed(1) + "%", involvedTxIds: group.leasingTxIds[maxLeasing] },
+                description: `Dominasi leasing: ${maxLeasing} menguasai ${(dominanceRatio * 100).toFixed(1)}% dari total ${group.totalCredit} penjualan kredit oleh ${salesman}.`,
+              });
+            }
+          }
+        }
+      }
+
+      if (rule.code === "O05") {
+        // Identity Fraud: Customer Name != STNK Name
+        const bySalesman = new Map<string, { count: number; txIds: string[]; outletCode: string; outletName: string; branchName: string }>();
+        for (const tx of transactions) {
+          const customerName = tx.rawMetadata?.['Customer Name'] as string | undefined;
+          const stnkName = tx.rawMetadata?.['Nama STNK'] as string | undefined;
+          const salesman = tx.rawMetadata?.['Salesforce'] as string | undefined;
+          if (salesman && customerName && stnkName) {
+            const name1 = customerName.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const name2 = stnkName.toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (name1 !== name2 && name1.length > 0 && name2.length > 0) {
+              if (!bySalesman.has(salesman)) {
+                bySalesman.set(salesman, { count: 0, txIds: [], outletCode: tx.outletCode, outletName: tx.outletName, branchName: tx.branchName });
+              }
+              const group = bySalesman.get(salesman)!;
+              group.count++;
+              group.txIds.push(tx.id);
+            }
+          }
+        }
+        for (const [salesman, group] of bySalesman.entries()) {
+          if (group.count >= 3) {
+            inlineDetections.push({
+              ruleCode: "O05", ruleName: rule.name, sector: rule.sector, entityType: "OFFICER",
+              entityId: `SALES-${salesman}`, entityName: salesman,
+              riskScore: Math.min(100, rule.riskWeight * (group.count / 3)), riskWeight: rule.riskWeight,
+              outletCode: group.outletCode, outletName: group.outletName, branchName: group.branchName,
+              metadata: { mismatchCount: group.count, involvedTxIds: group.txIds },
+              description: `Indikasi penipuan identitas: Salesman ${salesman} memiliki ${group.count} transaksi dengan nama konsumen yang tidak sesuai dengan nama di STNK.`,
+            });
+          }
+        }
+      }
+      // O04 skipped — requires workshop data not yet uploaded
+    }
+
+    // Merge inline detections into rawDetections
+    let detectionCounter = Date.now();
+    for (const d of inlineDetections) {
+      rawDetections.push({
+        id: `AD-${detectionCounter++}`,
+        ruleCode: d.ruleCode as any,
+        ruleName: d.ruleName,
+        sector: d.sector as any,
+        businessUnitId: buId || "",
+        entityType: d.entityType as any,
+        entityId: d.entityId,
+        entityName: d.entityName,
+        outletCode: d.outletCode,
+        outletName: d.outletName,
+        branchName: d.branchName,
+        riskScore: Math.round(d.riskScore),
+        riskWeight: d.riskWeight,
+        status: "DETECTED" as any,
+        detectedAt: new Date().toISOString().split("T")[0],
+        metadata: d.metadata,
+        description: d.description,
+      });
+    }
+    
+    console.log(`[API risk-intelligence] rawDetections count=${rawDetections.length} (inline otomotif: ${inlineDetections.length}), rules: ${rules.map(r => r.code).join(',')}`);
 
     // Override the generic detection dates with the transaction event date for realism
     const detections: AnomalyDetection[] = rawDetections.map(d => {
       const matchTx = transactions.find(t => 
         t.customerId === d.entityId || 
         t.outletCode === d.entityId || 
-        t.contractNo === d.metadata.contractNo ||
         (d.metadata && t.contractNo === d.metadata.contractNo)
       );
       return {
         ...d,
         detectedAt: matchTx ? matchTx.eventDate : d.detectedAt,
-        outletCode: matchTx ? matchTx.outletCode : d.outletCode,
-        outletName: matchTx ? matchTx.outletName : (d.entityType === "BRANCH" ? d.entityName : ""),
-        branchName: matchTx ? matchTx.branchName : "",
+        outletCode: matchTx ? matchTx.outletCode : (d.metadata?.outletCode as string || d.outletCode),
+        outletName: matchTx ? matchTx.outletName : (d.entityType === "BRANCH" ? d.entityName : (d.metadata?.branchName as string || "")),
+        branchName: matchTx ? matchTx.branchName : (d.metadata?.branchName as string || ""),
         businessUnitId: buId || "bu-pg-gmn",
       };
     });
@@ -264,7 +445,7 @@ export async function GET(request: NextRequest) {
       
       customerRiskProfiles.push({
         id: `CUST-PROF-${customerId}`,
-        sector: "PERGADAIAN",
+        sector: (buId && buId.includes("ot")) ? "OTOMOTIF" : "PERGADAIAN",
         businessUnitId: buId || "bu-pg-gmn",
         customerId,
         customerName: cDetections[0].entityName,
@@ -326,7 +507,7 @@ export async function GET(request: NextRequest) {
 
       branchRiskProfiles.push({
         id: `BRANCH-PROF-${outletCode}`,
-        sector: "PERGADAIAN",
+        sector: (buId && buId.includes("ot")) ? "OTOMOTIF" : "PERGADAIAN",
         businessUnitId: buId || "bu-pg-gmn",
         outletCode,
         outletName: sampleTx.outletName,
@@ -362,11 +543,50 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Keep mock profiles for Officers to avoid empty lists, but update metadata
-    const officerRiskProfiles: OfficerRiskProfile[] = mockDataSet.officerRiskProfiles.map(o => ({
-      ...o,
-      businessUnitId: buId || "bu-pg-gmn",
-    }));
+    // Officer profiles are derived from real DB data or empty if not available
+    const officerDetections = detections.filter(d => d.entityType === "OFFICER");
+    const officerRiskProfiles: OfficerRiskProfile[] = [];
+    const uniqueOfficerIds = Array.from(new Set(officerDetections.map(d => d.entityId)));
+
+    for (const officerId of uniqueOfficerIds) {
+      const oDetections = officerDetections.filter(d => d.entityId === officerId);
+      const totalScore = Math.round(oDetections.reduce((sum, d) => sum + d.riskScore, 0) / oDetections.length);
+      const sampleDetection = oDetections[0];
+      
+      officerRiskProfiles.push({
+        id: `OFF-PROF-${officerId}`,
+        sector: (buId && buId.includes("ot")) ? "OTOMOTIF" : "PERGADAIAN",
+        businessUnitId: buId || "bu-pg-gmn",
+        officerId,
+        officerName: sampleDetection.entityName,
+        position: officerId.startsWith("SALES") ? "Salesman" : (officerId.startsWith("MECH") ? "Mechanic" : "Officer"),
+        outletCode: sampleDetection.outletCode || "000",
+        outletName: sampleDetection.outletName || "Unknown Outlet",
+        branchName: sampleDetection.branchName || "Unknown Branch",
+        totalScore,
+        riskLevel: riskLevelFromScore(totalScore),
+        anomalyCount: oDetections.length,
+        activeAnomalies: oDetections.filter(d => d.status === "DETECTED" || d.status === "CONFIRMED").length,
+        breakdown: {
+          items: oDetections.map(d => ({
+            ruleCode: d.ruleCode,
+            ruleName: d.ruleName,
+            occurrences: 1,
+            weightedScore: d.riskScore,
+            lastDetected: d.detectedAt,
+          })),
+          totalRawScore: oDetections.reduce((sum, d) => sum + d.riskScore, 0),
+          normalizedScore: totalScore,
+          velocityFactor: 1,
+          decayApplied: false,
+        },
+        handledTransactions: oDetections.length * 5,
+        supervisoryGapScore: Math.round(totalScore * 0.4),
+        trend: 0,
+        trendDirection: "STABLE",
+        updatedAt: new Date().toISOString().split("T")[0],
+      });
+    }
 
     // Group transactions by month for trend calculations
     const monthlyGroups = new Map<string, { 
@@ -510,12 +730,17 @@ export async function GET(request: NextRequest) {
       customerRiskProfiles: customerRiskProfiles.sort((a, b) => b.totalScore - a.totalScore),
       branchRiskProfiles: branchRiskProfiles.sort((a, b) => b.totalScore - a.totalScore),
       officerRiskProfiles,
-      riskScoreHistory: mockDataSet.riskScoreHistory, // maintain history mapping
+      riskScoreHistory: [],
       riskInsights,
       riskTrends,
       anomalyTrends,
     };
 
+    if (!buId) {
+      console.log(`[API] Consolidated mode (Real Data only)`);
+    }
+
+    console.log(`[API risk-intelligence] Returning response for buId=${buId}. rulesCount=${responsePayload.anomalyRules.length}, detectionsCount=${responsePayload.anomalyDetections.length}`);
     return NextResponse.json(responsePayload);
   } catch (error: any) {
     console.error("Error in risk-intelligence API:", error);

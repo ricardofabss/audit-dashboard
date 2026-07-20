@@ -24,7 +24,8 @@ export default function FindingsPage() {
   const [activeTab, setActiveTab] = useState<string>("");
   const [selectedFindingDetail, setSelectedFindingDetail] = useState<typeof findings[0] | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedSeverity, setSelectedSeverity] = useState<Severity | "All">("All");
+  const [selectedSeverity, setSelectedSeverity] = useState<"All" | "Critical" | "High" | "Medium" | "Low">("All");
+  const [statusFilter, setStatusFilter] = useState<"Active" | "Completed" | "All">("Active");
 
   // Form states
   const [title, setTitle] = useState("");
@@ -111,6 +112,24 @@ export default function FindingsPage() {
               </Badge>
             ))}
           </div>
+
+          <div className="w-px h-6 bg-white/10 mx-2" />
+
+          <div className="text-sm font-medium text-slate-300">Status:</div>
+          <div className="flex gap-2">
+            {(["Active", "Completed", "All"] as const).map((status) => (
+              <Badge
+                key={status}
+                tone={statusFilter === status ? "emerald" : "slate"}
+                className={`cursor-pointer transition-all ${
+                  statusFilter === status ? "ring-2 ring-emerald-500/50" : "opacity-60 hover:opacity-100"
+                }`}
+                onClick={() => setStatusFilter(status)}
+              >
+                {status}
+              </Badge>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
@@ -155,7 +174,7 @@ export default function FindingsPage() {
               <Badge tone="slate" className="font-mono">{Object.keys(activeAudits).length} Audits</Badge>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-6 max-h-[600px] overflow-y-auto relative pr-2">
               {Object.entries(activeAudits).map(([auditName, items]) => (
                 <div key={auditName} className="rounded-2xl border border-white/10 bg-[#0a1120] overflow-hidden shadow-lg">
                   <div className="bg-white/[0.02] border-b border-white/5 px-5 py-4 flex items-center gap-3">
@@ -169,7 +188,14 @@ export default function FindingsPage() {
                   </div>
                   <div className="p-0">
                     <ModuleTable headers={["Finding", "Severity", "Status", "SLA", "Follow-up"]}>
-                      {items.map((item) => (
+                      {items
+                        .filter(item => {
+                          if (statusFilter === "All") return true;
+                          const isCompleted = item.status === "Resolved";
+                          if (statusFilter === "Completed") return isCompleted;
+                          return !isCompleted;
+                        })
+                        .map((item) => (
                         <tr key={item.id} className="border-b border-white/5 hover:bg-white/[0.02] transition">
                           <TableCell>
                             <div className="font-medium text-white">{item.title}</div>

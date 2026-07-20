@@ -1,14 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Users, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { motion } from "framer-motion";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslation } from "@/hooks/use-translation";
-import { getRiskData } from "@/lib/risk-mock-data";
-import { useBusinessUnitStore } from "@/hooks/use-business-unit";
+import { useBusinessUnitStore, useActiveBU } from "@/hooks/use-business-unit";
 import { RiskLevelIndicator } from "@/components/risk-intelligence/risk-level-indicator";
 import { RiskScoreGauge } from "@/components/risk-intelligence/risk-score-gauge";
 import { AnomalyRuleBadge } from "@/components/risk-intelligence/anomaly-rule-badge";
@@ -19,20 +18,57 @@ const tooltipStyle = { contentStyle: { background: "#0b1739", border: "1px solid
 export default function CustomerRiskPage() {
   const { t } = useTranslation();
   const activeBUId = useBusinessUnitStore((s) => s.activeBUId);
-  const data = useMemo(() => getRiskData(activeBUId), [activeBUId]);
+  const activeBU = useActiveBU();
+  const validBUId = activeBU ? activeBU.id : null;
+  
+  const [data, setData] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterLevel, setFilterLevel] = useState<RiskLevel | "ALL">("ALL");
   const [selected, setSelected] = useState<CustomerRiskProfile | null>(null);
 
-  const sortedCustomers = useMemo(() =>
-    [...data.customerRiskProfiles]
-      .sort((a, b) => b.totalScore - a.totalScore)
-      .filter(c => {
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+    setError(null);
+
+    const url = `/api/risk-intelligence` + (validBUId ? `?buId=${validBUId}&_t=${Date.now()}` : `?_t=${Date.now()}`);
+
+    fetch(url, { cache: 'no-store' })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch customer data");
+        return res.json();
+      })
+      .then((fetchedData) => {
+        if (isMounted) {
+          setData(fetchedData);
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        if (isMounted) {
+          setError(err.message || "Failed to load customer data");
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [validBUId]);
+
+  const sortedCustomers = useMemo(() => {
+    if (!data) return [];
+    return [...data.customerRiskProfiles]
+      .sort((a: any, b: any) => b.totalScore - a.totalScore)
+      .filter((c: any) => {
         if (filterLevel !== "ALL" && c.riskLevel !== filterLevel) return false;
         if (search && !c.customerName.toLowerCase().includes(search.toLowerCase()) && !c.cifNumber.toLowerCase().includes(search.toLowerCase())) return false;
         return true;
-      })
-  , [search, filterLevel, data]);
+      });
+  }, [search, filterLevel, data]);
 
   const radarData = useMemo(() => {
     if (!selected) return [];
@@ -58,6 +94,27 @@ export default function CustomerRiskPage() {
     element.click();
     document.body.removeChild(element);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-500 border-t-transparent"></div>
+          <p className="text-sm text-slate-400">Loading customer data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-red-400">
+          <p>Error: {error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 pb-10">
@@ -91,10 +148,10 @@ export default function CustomerRiskPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overflow-y-auto max-h-[600px] scrollbar-thin">
               <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/10 text-left">
+                <thead className="sticky top-0 bg-[#0b1739] z-10 shadow-[0_1px_0_0_rgba(255,255,255,0.1)]">
+                  <tr className="text-left">
                     <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">#</th>
                     <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{t("ri.customer")}</th>
                     <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{t("ri.score")}</th>

@@ -2,7 +2,9 @@ export const translations = {
   en: {
     // Navigation Groups
     "nav.commandCenter": "Command Center",
-    "nav.riskIntelligence": "Risk Intelligence",
+    "nav.reporting": "Reporting",
+    "nav.riskIntelligence": "Anomaly Intelligence",
+    "nav.anomalyIntelligence": "Anomaly Intelligence",
     "nav.intelligence": "Intelligence",
     "nav.workspace": "Workspace",
 
@@ -24,14 +26,15 @@ export const translations = {
     "nav.compliance": "Compliance",
     "nav.approvals": "Approval Workflow",
     "nav.documents": "Document Center",
-    "nav.ai": "AI Assistant",
+    "nav.ai": "AI Forecasting Engine",
     "nav.notifications": "Notifications",
-    "nav.users": "User Management",
     "nav.settings": "Settings",
+    "nav.monthlyReports": "Monthly Reports Submissions",
+    "nav.reportDashboard": "Report Dashboard",
 
     // Dashboard
-    "dash.title": "Executive Command Center",
-    "dash.subtitle": "AI-powered audit intelligence across planning, findings, investigations, and risk posture.",
+    "dash.title": "Internal Audit Dashboard",
+    "dash.subtitle": "Audit planning, findings tracking, follow-up monitoring, and assurance reporting for holding.",
     "dash.activeAudits": "Active Audits",
     "dash.openFindings": "Open Findings",
     "dash.criticalFindings": "Critical Findings",
@@ -40,6 +43,19 @@ export const translations = {
     "dash.completionProgress": "Audit Completion Progress",
     "dash.btnCreate": "Create Audit Plan",
     "dash.btnExport": "Export Executive Pack",
+    "dash.kpiActiveAudits": "Active Audits",
+    "dash.kpiOpenFindings": "Open Findings",
+    "dash.kpiOverdueFindings": "Overdue Findings",
+    "dash.kpiPlanRealization": "Audit Plan Realization",
+    "dash.kpiTotal": "Total",
+    "dash.kpiPlanned": "planned",
+    "dash.kpiUnassigned": "unassigned",
+    "dash.kpiNeedFollowUp": "Need immediate follow-up",
+    "dash.kpiCompleted": "completed",
+    "dash.chartAuditTrend": "Audit Activity Trend",
+    "dash.chartFindingsByBU": "Findings by Business Unit",
+    "dash.chartCompleted": "Audits Completed",
+    "dash.chartFindings": "Findings",
 
     // Planning
     "plan.title": "Audit Assignments",
@@ -172,11 +188,11 @@ export const translations = {
     "ai.placeholder": "Ask copilot about findings, audits, risks, or WBS...",
     "ai.btnSend": "Send",
 
-    // ─── Risk Intelligence ───────────────────────────────────────────
+    // ─── Anomaly Intelligence ───────────────────────────────────────────
 
-    // Executive Risk Dashboard
-    "ri.dashTitle": "Risk Intelligence Dashboard",
-    "ri.dashSubtitle": "Enterprise risk monitoring with anomaly detection, risk scoring, and AI-generated insights.",
+    // Executive Anomaly Dashboard
+    "ri.dashTitle": "Anomaly Intelligence Dashboard",
+    "ri.dashSubtitle": "Enterprise anomaly monitoring with detection rules, risk scoring, and AI-generated insights.",
     "ri.btnRunScan": "Run Anomaly Scan",
     "ri.btnExportRisk": "Export Risk Report",
     "ri.totalAnomalies": "Active Anomalies",
@@ -203,7 +219,7 @@ export const translations = {
     "ri.allEntities": "All Entities",
 
     // Customer Risk
-    "ri.custTitle": "Customer Risk Intelligence",
+    "ri.custTitle": "Customer Anomaly Intelligence",
     "ri.custSubtitle": "Customer risk ranking, anomaly breakdown, transaction history, and behavioral analysis.",
     "ri.btnFlagInvestigation": "Flag for Investigation",
     "ri.btnGenerateReport": "Generate Report",
@@ -220,7 +236,7 @@ export const translations = {
     "ri.loanAmount": "Loan Amount",
 
     // Branch Risk
-    "ri.branchTitle": "Branch Risk Intelligence",
+    "ri.branchTitle": "Branch Anomaly Intelligence",
     "ri.branchSubtitle": "Branch risk leaderboard, comparative analysis, anomaly density, and historical trends.",
     "ri.btnCompare": "Compare Branches",
     "ri.btnDrillDown": "Drill Down",
@@ -235,7 +251,7 @@ export const translations = {
     "ri.highRiskCust": "High Risk Customers",
 
     // Officer Risk
-    "ri.officerTitle": "Officer Risk Intelligence",
+    "ri.officerTitle": "Officer Anomaly Intelligence",
     "ri.officerSubtitle": "Officer risk ranking, supervisory gap analysis, and anomaly handling metrics.",
     "ri.btnReviewOfficer": "Review Officer",
     "ri.btnSupervisoryReport": "Supervisory Report",
@@ -259,7 +275,7 @@ export const translations = {
     "ri.officerAvg": "Officer Avg",
     "ri.anomalyCount": "Anomaly Count",
 
-    // Common Risk Intelligence
+    // Common Anomaly Intelligence
     "ri.detected": "Detected",
     "ri.confirmed": "Confirmed",
     "ri.investigating": "Investigating",
@@ -296,7 +312,9 @@ export const translations = {
   id: {
     // Navigation Groups
     "nav.commandCenter": "Pusat Komando",
-    "nav.riskIntelligence": "Kecerdasan Risiko",
+    "nav.reporting": "Pelaporan",
+    "nav.riskIntelligence": "Kecerdasan Anomali",
+    "nav.anomalyIntelligence": "Kecerdasan Anomali",
     "nav.intelligence": "Kecerdasan Sistem",
     "nav.workspace": "Ruang Kerja",
 
@@ -318,14 +336,15 @@ export const translations = {
     "nav.compliance": "Kepatuhan Regulasi",
     "nav.approvals": "Alur Kerja Persetujuan",
     "nav.documents": "Pusat Dokumen",
-    "nav.ai": "Asisten AI Copilot",
+    "nav.ai": "Mesin AI Forecasting",
     "nav.notifications": "Notifikasi",
-    "nav.users": "Manajemen Pengguna",
     "nav.settings": "Pengaturan",
+    "nav.monthlyReports": "Data Laporan Bulanan",
+    "nav.reportDashboard": "Dashboard Laporan",
 
     // Dashboard
-    "dash.title": "Pusat Komando Eksekutif",
-    "dash.subtitle": "Kecerdasan audit berbasis AI untuk perencanaan, temuan, investigasi, dan manajemen risiko.",
+    "dash.title": "Dashboard Internal Audit",
+    "dash.subtitle": "Perencanaan audit, pelacakan temuan, pemantauan tindak lanjut, dan pelaporan assurance holding.",
     "dash.activeAudits": "Audit Aktif",
     "dash.openFindings": "Temuan Terbuka",
     "dash.criticalFindings": "Temuan Kritis",
@@ -334,6 +353,19 @@ export const translations = {
     "dash.completionProgress": "Progres Penyelesaian Audit",
     "dash.btnCreate": "Buat Rencana Audit",
     "dash.btnExport": "Ekspor Dokumen Eksekutif",
+    "dash.kpiActiveAudits": "Audit Aktif",
+    "dash.kpiOpenFindings": "Temuan Terbuka",
+    "dash.kpiOverdueFindings": "Temuan Overdue",
+    "dash.kpiPlanRealization": "Realisasi PKPT",
+    "dash.kpiTotal": "Total",
+    "dash.kpiPlanned": "direncanakan",
+    "dash.kpiUnassigned": "belum ditindaklanjuti",
+    "dash.kpiNeedFollowUp": "Perlu tindak lanjut segera",
+    "dash.kpiCompleted": "selesai",
+    "dash.chartAuditTrend": "Tren Aktivitas Audit",
+    "dash.chartFindingsByBU": "Temuan per Unit Bisnis",
+    "dash.chartCompleted": "Audit Selesai",
+    "dash.chartFindings": "Temuan",
 
     // Planning
     "plan.title": "Surat Tugas Audit",
@@ -466,11 +498,11 @@ export const translations = {
     "ai.placeholder": "Tanya copilot mengenai temuan, audit, risiko, atau WBS...",
     "ai.btnSend": "Kirim",
 
-    // ─── Risk Intelligence ───────────────────────────────────────────
+    // ─── Anomaly Intelligence ───────────────────────────────────────────
 
-    // Executive Risk Dashboard
-    "ri.dashTitle": "Dashboard Kecerdasan Risiko",
-    "ri.dashSubtitle": "Pemantauan risiko perusahaan dengan deteksi anomali, penilaian risiko, dan insight berbasis AI.",
+    // Executive Anomaly Dashboard
+    "ri.dashTitle": "Dashboard Kecerdasan Anomali",
+    "ri.dashSubtitle": "Pemantauan anomali perusahaan dengan aturan deteksi, penilaian risiko, dan insight berbasis AI.",
     "ri.btnRunScan": "Jalankan Pemindaian Anomali",
     "ri.btnExportRisk": "Ekspor Laporan Risiko",
     "ri.totalAnomalies": "Anomali Aktif",
@@ -497,7 +529,7 @@ export const translations = {
     "ri.allEntities": "Semua Entitas",
 
     // Customer Risk
-    "ri.custTitle": "Kecerdasan Risiko Nasabah",
+    "ri.custTitle": "Kecerdasan Anomali Nasabah",
     "ri.custSubtitle": "Peringkat risiko nasabah, rincian anomali, riwayat transaksi, dan analisis perilaku.",
     "ri.btnFlagInvestigation": "Tandai untuk Investigasi",
     "ri.btnGenerateReport": "Buat Laporan",
@@ -514,7 +546,7 @@ export const translations = {
     "ri.loanAmount": "Jumlah Pinjaman",
 
     // Branch Risk
-    "ri.branchTitle": "Kecerdasan Risiko Cabang",
+    "ri.branchTitle": "Kecerdasan Anomali Cabang",
     "ri.branchSubtitle": "Papan peringkat risiko cabang, analisis komparatif, kepadatan anomali, dan tren historis.",
     "ri.btnCompare": "Bandingkan Cabang",
     "ri.btnDrillDown": "Analisis Mendalam",
@@ -529,7 +561,7 @@ export const translations = {
     "ri.highRiskCust": "Nasabah Risiko Tinggi",
 
     // Officer Risk
-    "ri.officerTitle": "Kecerdasan Risiko Petugas",
+    "ri.officerTitle": "Kecerdasan Anomali Petugas",
     "ri.officerSubtitle": "Peringkat risiko petugas, analisis celah pengawasan, dan metrik penanganan anomali.",
     "ri.btnReviewOfficer": "Review Petugas",
     "ri.btnSupervisoryReport": "Laporan Pengawasan",
@@ -553,7 +585,7 @@ export const translations = {
     "ri.officerAvg": "Rata-rata Petugas",
     "ri.anomalyCount": "Jumlah Anomali",
 
-    // Common Risk Intelligence
+    // Common Anomaly Intelligence
     "ri.detected": "Terdeteksi",
     "ri.confirmed": "Terkonfirmasi",
     "ri.investigating": "Dalam Investigasi",

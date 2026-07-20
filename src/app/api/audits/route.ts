@@ -15,6 +15,8 @@ export async function GET() {
       status: a.status,
       progress: a.progress,
       risk: a.risk,
+      period: a.period || undefined,
+      dueDate: a.dueDate || undefined,
     }));
     return NextResponse.json(formattedAudits);
   } catch (error) {
@@ -26,7 +28,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { id, name, branch, lead, status, progress, risk } = body;
+    const { id, name, branch, lead, status, progress, risk, period, dueDate } = body;
     
     const newAudit = await db.auditProject.create({
       data: {
@@ -37,6 +39,8 @@ export async function POST(request: Request) {
         status,
         progress,
         risk,
+        period,
+        dueDate,
       },
     });
 

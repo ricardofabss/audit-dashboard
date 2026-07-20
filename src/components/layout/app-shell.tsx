@@ -26,7 +26,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen overflow-hidden bg-[#081028] text-slate-100">
       <Sidebar open={sidebarOpen} onToggle={() => setSidebarOpen((value) => !value)} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar onToggleAI={() => setAiOpen((value) => !value)} />
+        <Topbar />
         <main className="scrollbar-thin flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6">
           <div className="mx-auto w-full max-w-[1500px]">{children}</div>
         </main>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { TrendingUp } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -10,8 +10,7 @@ import {
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslation } from "@/hooks/use-translation";
-import { getRiskData } from "@/lib/risk-mock-data";
-import { useBusinessUnitStore, useActiveSector } from "@/hooks/use-business-unit";
+import { useBusinessUnitStore, useActiveBU, useActiveSector } from "@/hooks/use-business-unit";
 import { sectorMeta } from "@/lib/business-units";
 import { getAnomalyRuleColor } from "@/components/risk-intelligence/anomaly-rule-badge";
 import type { AnomalyRuleCode } from "@/types/risk-intelligence";
@@ -21,8 +20,44 @@ const tooltipStyle = { contentStyle: { background: "#0b1739", border: "1px solid
 export default function RiskTrendsPage() {
   const { t, language } = useTranslation();
   const activeBUId = useBusinessUnitStore((s) => s.activeBUId);
+  const activeBU = useActiveBU();
+  const validBUId = activeBU ? activeBU.id : null;
   const activeSector = useActiveSector();
-  const data = useMemo(() => getRiskData(activeBUId), [activeBUId]);
+
+  const [data, setData] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+    setError(null);
+
+    const url = `/api/risk-intelligence` + (validBUId ? `?buId=${validBUId}` : "");
+
+    fetch(url)
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch trends data");
+        return res.json();
+      })
+      .then((fetchedData) => {
+        if (isMounted) {
+          setData(fetchedData);
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        if (isMounted) {
+          setError(err.message || "Failed to load trends data");
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [validBUId]);
 
   // Dynamic terminology
   const customerLabel = useMemo(() => {
@@ -40,7 +75,7 @@ export default function RiskTrendsPage() {
     return sectorMeta[activeSector].entityLabels.officer[language];
   }, [activeSector, language]);
 
-  const ruleKeys = useMemo(() => data.anomalyRules.map(r => r.code), [data.anomalyRules]);
+  const ruleKeys = useMemo(() => data ? data.anomalyRules.map((r: any) => r.code) : [], [data]);
 
   // ─── Bell Curve Calculations ─────────────────────────────────────
   const bellCurveData = useMemo(() => {
@@ -50,41 +85,35 @@ export default function RiskTrendsPage() {
 
     // Filter out branches with no/zero pawn duration
     const validBranches = data.branchRiskProfiles.filter(
-      (b) => b.avgPawnDuration !== undefined && b.avgPawnDuration > 0
+      (b: any) => b.avgPawnDuration !== undefined && b.avgPawnDuration > 0
     );
 
     if (validBranches.length === 0) {
       return { curvePoints: [], branchPoints: [], stats: { mean: 0, stdDev: 0 } };
     }
 
-    const values = validBranches.map((b) => b.avgPawnDuration!);
+    const values = validBranches.map((b: any) => b.avgPawnDuration!);
     const N = values.length;
-    const mean = values.reduce((sum, v) => sum + v, 0) / N;
-    
-    const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / N;
-    // Fallback stdDev to 1 to avoid division by zero
+    const mean = values.reduce((sum: number, v: number) => sum + v, 0) / N;
+    const variance = values.reduce((sum: number, v: number) => sum + Math.pow(v - mean, 2), 0) / N;
     const stdDev = Math.max(1, Math.sqrt(variance));
 
-    // Generate 80 points for the bell curve (from mean - 3.5 * stdDev to mean + 3.5 * stdDev)
-    const curvePoints: { x: number; y: number }[] = [];
-    const minX = mean - 3.5 * stdDev;
+    const curvePoints = [];
+    const minX = Math.max(0, mean - 3.5 * stdDev);
     const maxX = mean + 3.5 * stdDev;
-    const step = (maxX - minX) / 79; // 80 points
+    const step = (maxX - minX) / 79; // 80 points total
 
-    const pdf = (x: number) => {
-      return (1 / (stdDev * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mean) / stdDev, 2));
-    };
+    const pdf = (x: number) =>
+      (1 / (stdDev * Math.sqrt(2 * Math.PI))) *
+      Math.exp(-0.5 * Math.pow((x - mean) / stdDev, 2));
 
     for (let i = 0; i < 80; i++) {
       const x = minX + i * step;
-      curvePoints.push({
-        x: Number(x.toFixed(2)),
-        y: pdf(x),
-      });
+      curvePoints.push({ x: Number(x.toFixed(2)), y: pdf(x) });
     }
 
     // Map each branch average duration to a scatter dot on the curve
-    const branchPoints = validBranches.map((b) => {
+    const branchPoints = validBranches.map((b: any) => {
       const x = b.avgPawnDuration!;
       const y = pdf(x);
       const zScore = (x - mean) / stdDev;
@@ -111,6 +140,12 @@ export default function RiskTrendsPage() {
 
   // Period comparison: this quarter vs last quarter
   const periodComparison = useMemo(() => {
+    if (!data || !data.riskTrends) {
+      return {
+        thisQuarter: { customerAvg: 0, branchAvg: 0, officerAvg: 0, anomalyCount: 0 },
+        lastQuarter: { customerAvg: 0, branchAvg: 0, officerAvg: 0, anomalyCount: 0 }
+      };
+    }
     const trends = data.riskTrends;
     const thisQ = trends.slice(-3);
     const lastQ = trends.slice(-6, -3);
@@ -190,7 +225,7 @@ export default function RiskTrendsPage() {
         </CardHeader>
         <CardContent className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data.riskTrends}>
+            <AreaChart data={data?.riskTrends || []}>
               <defs>
                 <linearGradient id="trendCust" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.3} />
@@ -227,7 +262,7 @@ export default function RiskTrendsPage() {
         </CardHeader>
         <CardContent className="h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={data.anomalyTrends}>
+            <ComposedChart data={data?.anomalyTrends || []}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="period" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />

@@ -49,6 +49,7 @@ export type TransactionInput = {
   disbursementDate?: string;
   settlementDate?: string;
   settlementStatus?: string;
+  rawMetadata?: Record<string, any>;
 };
 
 // ─── Rule Implementations ────────────────────────────────────────────
@@ -338,6 +339,244 @@ const evaluateA07: RuleFunction = (transactions, rule) => {
   return results;
 };
 
+// ─── Otomotif Rules ──────────────────────────────────────────────────
+
+/**
+ * O01 — Penjualan Meningkat di Akhir Bulan (Indikasi Pending)
+ * > 50% penjualan salesman terjadi di 7 hari terakhir bulan tersebut.
+ */
+const evaluateO01: RuleFunction = (transactions, rule) => {
+  const results: RuleEvaluation[] = [];
+
+  // Group by YYYY-MM and Salesforce
+  const byMonthSalesman = new Map<string, { total: number; spike: number; salesman: string; monthStr: string; outletCode: string }>();
+
+  for (const tx of transactions) {
+    const salesman = tx.rawMetadata?.['Salesforce'];
+    if (!salesman) continue;
+
+    const dateStr = tx.eventDate; // YYYY-MM-DD
+    if (!dateStr || dateStr.length < 10) continue;
+
+    const monthStr = dateStr.substring(0, 7); // YYYY-MM
+    const key = `${monthStr}_${salesman}`;
+
+    if (!byMonthSalesman.has(key)) {
+      byMonthSalesman.set(key, { total: 0, spike: 0, salesman, monthStr, outletCode: tx.outletCode });
+    }
+
+    const group = byMonthSalesman.get(key)!;
+    group.total++;
+
+    // Check if the date is in the last 7 days of the month
+    const year = parseInt(dateStr.substring(0, 4));
+    const month = parseInt(dateStr.substring(5, 7));
+    const day = parseInt(dateStr.substring(8, 10));
+    
+    // Get the last day of the month
+    const lastDayOfMonth = new Date(year, month, 0).getDate();
+    
+    if (day > lastDayOfMonth - 7) {
+      group.spike++;
+    }
+  }
+
+  for (const group of byMonthSalesman.values()) {
+    if (group.total >= 5) {
+      const spikeRatio = group.spike / group.total;
+      if (spikeRatio > 0.5) {
+        results.push({
+          triggered: true,
+          ruleCode: "O01",
+          entityType: "OFFICER", // Flag the salesman
+          entityId: `SALES-${group.salesman}`,
+          entityName: group.salesman,
+          riskScore: Math.min(100, rule.riskWeight * (spikeRatio / 0.5)),
+          metadata: { 
+            spikeRatio: (spikeRatio * 100).toFixed(1) + "%", 
+            spikeCount: group.spike,
+            totalCount: group.total,
+            month: group.monthStr,
+            outletCode: group.outletCode,
+          },
+          description: `Indikasi pending sales: ${group.spike} dari ${group.total} unit (${(spikeRatio * 100).toFixed(1)}%) dijual pada 7 hari terakhir bulan ${group.monthStr}.`,
+        });
+      }
+    }
+  }
+
+  return results;
+};
+
+
+/**
+ * O02 — Dominasi Leasing Tertentu pada Sales
+ * > 60% penjualan kredit salesman dikuasai oleh 1 Leasing (Cash/Credit column)
+ */
+const evaluateO02: RuleFunction = (transactions, rule) => {
+  const results: RuleEvaluation[] = [];
+
+  // Group credit sales by Salesforce, then by Leasing
+  const salesmanLeasing = new Map<string, { totalCredit: number; leasingCounts: Record<string, number>; outletCode: string }>();
+
+  for (const tx of transactions) {
+    const salesman = tx.rawMetadata?.['Salesforce'];
+    const cashOrCredit = tx.rawMetadata?.['Cash / Credit'] || '';
+    
+    // Ignore cash sales or missing data
+    if (!salesman || !cashOrCredit || cashOrCredit.toLowerCase() === 'cash') continue;
+
+    if (!salesmanLeasing.has(salesman)) {
+      salesmanLeasing.set(salesman, { totalCredit: 0, leasingCounts: {}, outletCode: tx.outletCode });
+    }
+
+    const group = salesmanLeasing.get(salesman)!;
+    group.totalCredit++;
+    group.leasingCounts[cashOrCredit] = (group.leasingCounts[cashOrCredit] || 0) + 1;
+  }
+
+  for (const [salesman, group] of salesmanLeasing.entries()) {
+    if (group.totalCredit >= 5) {
+      // Find the dominant leasing
+      let maxLeasing = "";
+      let maxCount = 0;
+      for (const [leasing, count] of Object.entries(group.leasingCounts)) {
+        if (count > maxCount) {
+          maxCount = count;
+          maxLeasing = leasing;
+        }
+      }
+
+      const dominanceRatio = maxCount / group.totalCredit;
+      if (dominanceRatio > 0.6) {
+        results.push({
+          triggered: true,
+          ruleCode: "O02",
+          entityType: "OFFICER",
+          entityId: `SALES-${salesman}`,
+          entityName: salesman,
+          riskScore: Math.min(100, rule.riskWeight * (dominanceRatio / 0.6)),
+          metadata: { 
+            dominanceRatio: (dominanceRatio * 100).toFixed(1) + "%", 
+            leasingName: maxLeasing,
+            leasingCount: maxCount,
+            totalCredit: group.totalCredit,
+            outletCode: group.outletCode,
+          },
+          description: `Dominasi leasing tidak wajar: ${(dominanceRatio * 100).toFixed(1)}% (${maxCount} dari ${group.totalCredit}) penjualan kredit dikuasai leasing ${maxLeasing}.`,
+        });
+      }
+    }
+  }
+
+  return results;
+};
+
+/**
+ * O04 — Ketimpangan Performance Mekanik
+ * Seorang mekanik mendominasi > 50% seluruh transaksi bengkel di cabangnya.
+ */
+const evaluateO04: RuleFunction = (transactions, rule) => {
+  const results: RuleEvaluation[] = [];
+
+  // Filter workshop transactions
+  const workshopTx = transactions.filter(t => t.rawMetadata && t.rawMetadata['Workshop Number']);
+  
+  // Group by Branch Name
+  const byBranch = new Map<string, { totalBranch: number; mechanics: Record<string, number>; outletCode: string }>();
+
+  for (const tx of workshopTx) {
+    const branchName = tx.rawMetadata?.['Branch Name'] || tx.branchName || 'Unknown Branch';
+    const mechanic = tx.rawMetadata?.['Mechanic/Salesman'];
+    if (!mechanic) continue;
+
+    if (!byBranch.has(branchName)) {
+      byBranch.set(branchName, { totalBranch: 0, mechanics: {}, outletCode: tx.outletCode });
+    }
+
+    const group = byBranch.get(branchName)!;
+    group.totalBranch++;
+    group.mechanics[mechanic] = (group.mechanics[mechanic] || 0) + 1;
+  }
+
+  for (const [branch, group] of byBranch.entries()) {
+    if (group.totalBranch >= 10) {
+      for (const [mechanic, count] of Object.entries(group.mechanics)) {
+        const ratio = count / group.totalBranch;
+        // Threshold: > 50%
+        if (ratio > 0.5) {
+          results.push({
+            triggered: true,
+            ruleCode: "O04",
+            entityType: "OFFICER",
+            entityId: `MECH-${mechanic}`,
+            entityName: mechanic,
+            riskScore: Math.min(100, rule.riskWeight * (ratio / 0.5)),
+            metadata: {
+              workOrderCount: count,
+              branchTotal: group.totalBranch,
+              ratio: (ratio * 100).toFixed(1) + "%",
+              branchName: branch,
+              outletCode: group.outletCode,
+            },
+            description: `Ketimpangan pekerjaan: Mekanik ${mechanic} menangani ${count} dari total ${group.totalBranch} WO (${(ratio * 100).toFixed(1)}%) di cabang ${branch}.`
+          });
+        }
+      }
+    }
+  }
+
+  return results;
+};
+
+/**
+ * O05 — Indikasi Fraud (Nama Konsumen Beda Dengan STNK)
+ * Jika Salesman memiliki > 3 penjualan dengan nama beda.
+ */
+const evaluateO05: RuleFunction = (transactions, rule) => {
+  const results: RuleEvaluation[] = [];
+
+  const bySalesman = new Map<string, { count: number; outletCode: string }>();
+
+  for (const tx of transactions) {
+    const customerName = tx.rawMetadata?.['Customer Name'];
+    const stnkName = tx.rawMetadata?.['Nama STNK'];
+    const salesman = tx.rawMetadata?.['Salesforce'];
+
+    if (salesman && customerName && stnkName) {
+      // Basic string clean-up to match
+      const name1 = customerName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const name2 = stnkName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      
+      if (name1 !== name2 && name1.length > 0 && name2.length > 0) {
+        if (!bySalesman.has(salesman)) {
+          bySalesman.set(salesman, { count: 0, outletCode: tx.outletCode });
+        }
+        bySalesman.get(salesman)!.count++;
+      }
+    }
+  }
+
+  for (const [salesman, group] of bySalesman.entries()) {
+    if (group.count >= 3) {
+      results.push({
+        triggered: true,
+        ruleCode: "O05",
+        entityType: "OFFICER",
+        entityId: `SALES-${salesman}`,
+        entityName: salesman,
+        riskScore: Math.min(100, rule.riskWeight * (group.count / 3)),
+        metadata: {
+          mismatchCount: group.count,
+          outletCode: group.outletCode,
+        },
+        description: `Indikasi penipuan identitas: Salesman ${salesman} memiliki ${group.count} transaksi dengan nama konsumen yang tidak sesuai dengan nama di STNK.`
+      });
+    }
+  }
+
+  return results;
+};
 
 // ─── Engine Registry ─────────────────────────────────────────────────
 
@@ -349,6 +588,10 @@ const ruleEngines: Partial<Record<AnomalyRuleCode, RuleFunction>> = {
   A05: evaluateA05,
   A06: evaluateA06,
   A07: evaluateA07,
+  O01: evaluateO01,
+  O02: evaluateO02,
+  O04: evaluateO04,
+  O05: evaluateO05,
 };
 
 // ─── Public API ──────────────────────────────────────────────────────
@@ -363,13 +606,24 @@ export function runAnomalyDetection(
   const results: AnomalyDetection[] = [];
   let counter = Date.now();
 
+  console.log(`[anomaly-engine] runAnomalyDetection called with ${transactions.length} txns, ${rules.length} rules`);
+  if (transactions.length > 0) {
+    const s = transactions[0];
+    console.log(`[anomaly-engine] Sample tx rawMetadata type: ${typeof s.rawMetadata}, keys: ${s.rawMetadata ? Object.keys(s.rawMetadata).slice(0, 5).join(',') : 'NONE'}`);
+    console.log(`[anomaly-engine] Sample Salesforce: ${s.rawMetadata?.['Salesforce']}`);
+  }
+
   for (const rule of rules) {
     if (!rule.isActive) continue;
 
     const engine = ruleEngines[rule.code];
-    if (!engine) continue;
+    if (!engine) {
+      console.log(`[anomaly-engine] No engine for rule ${rule.code} — SKIPPING`);
+      continue;
+    }
 
     const evaluations = engine(transactions, rule);
+    console.log(`[anomaly-engine] Rule ${rule.code}: ${evaluations.length} evaluations, triggered: ${evaluations.filter(e => e.triggered).length}`);
 
     for (const ev of evaluations) {
       if (!ev.triggered) continue;

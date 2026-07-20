@@ -78,7 +78,7 @@ type AuditStore = {
   addDocument: (doc: DocumentItem) => Promise<void>;
   addActivity: (activity: Omit<Activity, "time">) => Promise<void>;
   
-  deleteDocument: (name: string) => void;
+  deleteDocument: (id: string) => void;
   updateFindingProgress: (id: string, progress: number) => Promise<void>;
   updateFindingStatus: (id: string, status: Finding["status"]) => Promise<void>;
   approveFinding: (id: string) => Promise<void>;
@@ -87,6 +87,8 @@ type AuditStore = {
   resetAll: () => void;
   language: "en" | "id";
   setLanguage: (lang: "en" | "id") => void;
+  isAiModeEnabled: boolean;
+  toggleAiMode: () => void;
 };
 
 export const useAuditStore = create<AuditStore>()(
@@ -100,19 +102,21 @@ export const useAuditStore = create<AuditStore>()(
       documents: initialDocuments,
       reports: [],
       language: "en",
-
+      isAiModeEnabled: false,
+      
+      toggleAiMode: () => set((state) => ({ isAiModeEnabled: !state.isAiModeEnabled })),
       setLanguage: (language) => set({ language }),
 
       fetchInitialData: async () => {
         try {
           const [auditsRes, findingsRes, wbsRes, risksRes, activitiesRes, docsRes, reportsRes] = await Promise.all([
-            fetch("/api/audits"),
-            fetch("/api/findings"),
-            fetch("/api/wbs"),
-            fetch("/api/risks"),
-            fetch("/api/activities"),
-            fetch("/api/documents"),
-            fetch("/api/reports").catch(() => ({ ok: false, json: () => [] })),
+            fetch("/api/audits", { cache: 'no-store' }),
+            fetch("/api/findings", { cache: 'no-store' }),
+            fetch("/api/wbs", { cache: 'no-store' }),
+            fetch("/api/risks", { cache: 'no-store' }),
+            fetch("/api/activities", { cache: 'no-store' }),
+            fetch("/api/documents", { cache: 'no-store' }),
+            fetch("/api/reports", { cache: 'no-store' }).catch(() => ({ ok: false, json: () => [] })),
           ]);
           
           if (auditsRes.ok) set({ audits: await auditsRes.json() });
@@ -268,9 +272,9 @@ export const useAuditStore = create<AuditStore>()(
         }
       },
 
-      deleteDocument: (name) =>
+      deleteDocument: (id) =>
         set((state) => ({
-          documents: state.documents.filter((d) => d.name !== name),
+          documents: state.documents.filter((d) => d.id !== id),
         })),
 
       updateFindingProgress: async (id, progress) => {

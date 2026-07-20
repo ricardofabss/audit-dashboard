@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/hooks/use-translation";
 import { BUSelector } from "@/components/layout/bu-selector";
 
-export function Topbar({ onToggleAI }: { onToggleAI: () => void }) {
+export function Topbar() {
   const { signOut, loading } = useAuth();
   const [themeDark, setThemeDark] = useState(true);
 
@@ -38,10 +38,6 @@ export function Topbar({ onToggleAI }: { onToggleAI: () => void }) {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="hidden lg:inline-flex" onClick={onToggleAI}>
-            <Bot className="h-4 w-4" />
-            AI Insights
-          </Button>
           <Button variant="ghost" size="icon" aria-label="Command palette">
             <Command className="h-4 w-4" />
           </Button>

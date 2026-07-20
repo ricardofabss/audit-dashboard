@@ -8,6 +8,7 @@ export async function GET() {
     });
     
     const formattedDocuments = documents.map((d) => ({
+      id: d.id,
       name: d.name,
       type: d.type,
       version: d.version,
