@@ -17,6 +17,7 @@ export const PRESET_USERS: Array<{
     roleTitle: "Super Admin",
     identity: {
       userId: "user-admin-000",
+      fullName: "System Administrator",
       email: "admin@auditsphere.ai",
       profileId: "prof-admin-000",
       roles: ["ADMIN", "OWNER"],
@@ -62,14 +63,19 @@ export async function POST(request: Request) {
       );
     }
 
+    const userIdentity: SessionIdentity = {
+      ...user.identity,
+      fullName: user.fullName,
+    };
+
     const response = NextResponse.json({
       success: true,
       message: "Login berhasil",
-      identity: user.identity,
+      identity: userIdentity,
     });
 
     // Set secure HTTP-only session cookie
-    response.cookies.set("auditsphere_session", JSON.stringify(user.identity), {
+    response.cookies.set("auditsphere_session", JSON.stringify(userIdentity), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

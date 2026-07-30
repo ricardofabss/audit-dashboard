@@ -16,6 +16,7 @@ export type PermissionCode =
 
 export type SessionIdentity = {
   userId: string;
+  fullName?: string | null;
   email: string | null;
   profileId: string | null;
   roles: AppRole[];

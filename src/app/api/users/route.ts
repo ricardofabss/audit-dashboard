@@ -63,7 +63,7 @@ export async function GET() {
     // Database connection fallback
   }
 
-  // Combine database users with memory preset users (avoiding duplicate emails/usernames)
+  // Combine database users with memory preset users
   const presetUsersList = PRESET_USERS.map((user) => {
     const bu = businessUnits.find((b) => b.id === user.identity.branchId);
     return {
@@ -128,6 +128,7 @@ export async function POST(request: Request) {
     roleTitle: roleCode === "ADMIN" ? "Administrator" : roleCode === "AUDITOR" ? "Internal Auditor" : roleCode === "HEAD_AUDIT" ? "Head of Audit" : "User",
     identity: {
       userId: `user-${Date.now()}`,
+      fullName,
       email: email.includes("@") ? email : `${username}@auditsphere.ai`,
       profileId: `prof-${Date.now()}`,
       roles: [roleCode],
