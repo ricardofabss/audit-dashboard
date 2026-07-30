@@ -49,6 +49,10 @@ export type DocumentItem = {
   version: string;
   owner: string;
   modified: string;
+  fileUrl?: string;
+  fileSize?: string;
+  fileType?: string;
+  buScope?: string;
 };
 
 export type MonthlyReport = {
@@ -381,9 +385,7 @@ export const useAuditStore = create<AuditStore>()(
         }),
     }),
     {
-      name: "audit-storage-v7",
-      // Exclude functions and non-critical state from persistence if needed
-      // but for now let's persist what we fetch to reduce flickers.
+      name: "audit-storage-v8",
     }
   )
 );
