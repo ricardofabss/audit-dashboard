@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { signInWithPassword } from "@/services/auth/auth-service";
 import { useAuthContext } from "@/modules/auth/auth-context";
-import { PRESET_USERS } from "@/app/api/auth/login/route";
 
 const loginSchema = z.object({
   username: z.string().min(3, "Username minimal 3 karakter"),
@@ -28,7 +27,7 @@ export function LoginForm() {
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { username: "admin", password: "admin123!", rememberMe: true },
+    defaultValues: { username: "", password: "", rememberMe: true },
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
@@ -45,12 +44,6 @@ export function LoginForm() {
     await refresh();
     router.push("/");
   });
-
-  const fillQuickUser = (username: string, pass: string) => {
-    form.setValue("username", username);
-    form.setValue("password", pass);
-    setError(null);
-  };
 
   return (
     <Card className="w-full max-w-md border-cyan-500/20 bg-[#0b1739]/90 shadow-2xl backdrop-blur-xl">
@@ -101,27 +94,6 @@ export function LoginForm() {
             {loading ? "Signing in..." : "Sign in to Dashboard"}
           </Button>
         </form>
-
-        {/* Quick Credentials Switcher */}
-        <div className="border-t border-white/10 pt-3">
-          <p className="text-[11px] font-semibold text-slate-400 mb-2 text-center">Akun Demo Cepat (Klik untuk memilih):</p>
-          <div className="grid grid-cols-1 gap-1.5">
-            {PRESET_USERS.map((u) => (
-              <button
-                key={u.username}
-                type="button"
-                onClick={() => fillQuickUser(u.username, u.password)}
-                className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.03] px-3 py-1.5 text-left text-xs transition hover:bg-white/[0.08] hover:border-cyan-500/30"
-              >
-                <div>
-                  <div className="font-semibold text-slate-200">{u.fullName}</div>
-                  <div className="text-[10px] text-slate-400">{u.roleTitle}</div>
-                </div>
-                <span className="font-mono text-[10px] text-cyan-300">@{u.username}</span>
-              </button>
-            ))}
-          </div>
-        </div>
       </CardContent>
     </Card>
   );
