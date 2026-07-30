@@ -72,6 +72,20 @@ export default function DocumentsPage() {
     }
   };
 
+  const handleDeleteDocument = async (id: string, name: string, fileUrl?: string) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus berkas '${name}' secara permanen?`)) return;
+
+    deleteDocument(id);
+
+    try {
+      await fetch(`/api/documents?id=${encodeURIComponent(id)}&fileUrl=${encodeURIComponent(fileUrl || "")}`, {
+        method: "DELETE",
+      });
+    } catch {
+      // Ignore API delete error
+    }
+  };
+
   const handleRetentionInfo = () => {
     alert("Enterprise Document Retention & Security Policy:\n\n- Active Audit Evidence: Retained for 7 years under ISO 27001 compliance standards.\n- Working Papers & Drafts: Archived for 5 years after audit closure.\n- Confidential Vault Documents: Encrypted storage with restricted download permission.\n- Automated Deletion: Purged files are zero-overwritten for privacy assurance.");
   };
@@ -191,7 +205,7 @@ export default function DocumentsPage() {
 
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      {/* OPSI C: In-Browser Preview Button */}
+                      {/* Preview Button */}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -203,7 +217,7 @@ export default function DocumentsPage() {
                         <span className="text-xs">Preview</span>
                       </Button>
 
-                      {/* OPSI B: Download Button with Scope Control */}
+                      {/* Download Button */}
                       {item.fileUrl ? (
                         <a
                           href={item.fileUrl}
@@ -222,14 +236,14 @@ export default function DocumentsPage() {
                         </span>
                       )}
 
-                      {/* Delete Button */}
+                      {/* Delete Physical & DB File Button */}
                       {isUserAdmin && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => deleteDocument(item.id)}
+                          onClick={() => handleDeleteDocument(item.id, item.name, item.fileUrl)}
                           className="h-8 w-8 text-slate-500 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition"
-                          title="Hapus Berkas"
+                          title="Hapus Dokumen & File Fisik"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -251,7 +265,7 @@ export default function DocumentsPage() {
         </CardContent>
       </Card>
 
-      {/* OPSI A: Real Physical File Upload Modal */}
+      {/* Upload Modal */}
       <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="Upload Berkas Fisik & Bukti Audit">
         <form onSubmit={handleSubmit} className="space-y-4 text-sm">
           <div>
@@ -336,7 +350,7 @@ export default function DocumentsPage() {
         </form>
       </Modal>
 
-      {/* OPSI C: In-Browser Document Preview Modal */}
+      {/* In-Browser Document Preview Modal */}
       {previewDoc && (
         <Modal isOpen={Boolean(previewDoc)} onClose={() => setPreviewDoc(null)} title={`Pratinjau Dokumen: ${previewDoc.name}`}>
           <div className="space-y-4 text-xs text-slate-300">
