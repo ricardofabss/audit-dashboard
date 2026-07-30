@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { SessionIdentity } from "@/types/auth";
+import { db } from "@/lib/db";
 
 export const PRESET_USERS: Array<{
   username: string;
@@ -51,12 +52,63 @@ export async function POST(request: Request) {
     }
 
     const inputVal = String(username).trim().toLowerCase();
-    // Allow login by Username OR Email
-    const user = PRESET_USERS.find(
+
+    // 1. First check in memory PRESET_USERS
+    let matchedUser = PRESET_USERS.find(
       (u) => (u.username.toLowerCase() === inputVal || u.email.toLowerCase() === inputVal) && u.password === password
     );
 
-    if (!user) {
+    // 2. If not found in memory, query PostgreSQL Database via Prisma
+    if (!matchedUser) {
+      try {
+        const dbProfile = await db.profile.findFirst({
+          where: {
+            OR: [
+              { email: { equals: inputVal, mode: "insensitive" } },
+              { emailNorm: { equals: inputVal, mode: "insensitive" } },
+              { authUserId: inputVal },
+            ],
+            deletedAt: null,
+          },
+          include: {
+            roles: { include: { role: true } },
+          },
+        });
+
+        if (dbProfile) {
+          const userPassword = dbProfile.avatarUrl || "audit123!";
+          if (userPassword === password) {
+            const roleCodes = dbProfile.roles.map((r) => r.role.code as any);
+            matchedUser = {
+              username: dbProfile.email.split("@")[0],
+              email: dbProfile.email,
+              password: userPassword,
+              fullName: dbProfile.fullName,
+              roleTitle: dbProfile.phone || "User",
+              identity: {
+                userId: dbProfile.authUserId,
+                fullName: dbProfile.fullName,
+                email: dbProfile.email,
+                profileId: dbProfile.id,
+                roles: roleCodes.length > 0 ? roleCodes : ["AUDITOR"],
+                permissions: [
+                  "dashboard.read",
+                  "audit.read",
+                  "findings.read",
+                  ...(roleCodes.includes("ADMIN") || roleCodes.includes("OWNER") ? ["users.manage", "settings.manage" as const] : []),
+                ] as any[],
+                branchId: dbProfile.branchId,
+                divisionId: dbProfile.divisionId,
+              },
+            };
+          }
+        }
+      } catch {
+        // Database query fallback
+      }
+    }
+
+    if (!matchedUser) {
       return NextResponse.json(
         { error: "Username atau password salah. Silakan coba lagi." },
         { status: 401 }
@@ -64,8 +116,8 @@ export async function POST(request: Request) {
     }
 
     const userIdentity: SessionIdentity = {
-      ...user.identity,
-      fullName: user.fullName,
+      ...matchedUser.identity,
+      fullName: matchedUser.fullName,
     };
 
     const response = NextResponse.json({

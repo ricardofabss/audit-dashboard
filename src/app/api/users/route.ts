@@ -145,7 +145,7 @@ export async function POST(request: Request) {
 
   PRESET_USERS.push(newUser);
 
-  // 2. Persist directly to PostgreSQL Database via Prisma if connected
+  // 2. Persist directly to PostgreSQL Database via Prisma
   try {
     const authUserId = newUser.identity.userId;
     const userEmail = newUser.email;
@@ -158,6 +158,7 @@ export async function POST(request: Request) {
         emailNorm: userEmail,
         status: "ACTIVE",
         phone: newUser.roleTitle,
+        avatarUrl: "audit123!", // Store initial default password in avatarUrl field for database authentication persistence
       },
     });
   } catch {
