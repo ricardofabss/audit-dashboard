@@ -1,8 +1,6 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { createSupabaseBrowserClient } from "@/lib/auth/supabase-browser";
-import { hasSupabasePublicEnv } from "@/lib/auth/env";
 import { signOut as signOutService } from "@/services/auth/auth-service";
 import type { SessionIdentity } from "@/types/auth";
 
@@ -17,72 +15,39 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 async function loadIdentity(): Promise<SessionIdentity | null> {
-  const response = await fetch("/api/auth/session", { cache: "no-store" });
-  if (!response.ok) return null;
-  const payload = (await response.json()) as { identity: SessionIdentity | null };
-  return payload.identity;
+  try {
+    const response = await fetch("/api/auth/session", { cache: "no-store" });
+    if (!response.ok) return null;
+    const payload = (await response.json()) as { identity: SessionIdentity | null };
+    return payload.identity;
+  } catch {
+    return null;
+  }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const envReady = hasSupabasePublicEnv();
-  const [loading, setLoading] = useState(envReady);
+  const [loading, setLoading] = useState(true);
   const [identity, setIdentity] = useState<SessionIdentity | null>(null);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      setIdentity(await loadIdentity());
+      const currentIdentity = await loadIdentity();
+      setIdentity(currentIdentity);
     } catch {
-      // If token refresh fails (stale/expired session), clear identity gracefully
       setIdentity(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    // FORCE BYPASS for prototype
-    const isDev = true;
-    if (isDev) {
-      void refresh();
-      return;
-    }
-
-    const supabase = createSupabaseBrowserClient();
-    if (!supabase) {
-      setLoading(false);
-      return;
-    }
-
-    setTimeout(() => {
-      void refresh();
-    }, 0);
-
-    const {
-      data: { subscription },
-    } = supabase!.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        setIdentity(null);
-        setLoading(false);
-        return;
-      }
-      void refresh();
-    });
-
-    // Handle Supabase internal errors (e.g. stale refresh tokens in localStorage)
-    supabase!.auth.getSession().catch(() => {
-      setIdentity(null);
-      setLoading(false);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [envReady]);
+    void refresh();
+  }, [refresh]);
 
   const signOut = useCallback(async () => {
     await signOutService();
-    await refresh();
+    setIdentity(null);
     window.location.href = "/login";
   }, []);
 
@@ -94,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refresh,
       signOut,
     }),
-    [loading, identity, signOut],
+    [loading, identity, refresh, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

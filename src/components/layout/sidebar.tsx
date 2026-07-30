@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
@@ -11,7 +11,6 @@ import { navGroups, productIcon as ProductIcon } from "./navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "@/hooks/use-translation";
 import { useActiveBU } from "@/hooks/use-business-unit";
-import { getRiskData } from "@/lib/risk-mock-data";
 
 const navTranslationKeys: Record<string, string> = {
   "Command Center": "nav.commandCenter",
@@ -65,36 +64,47 @@ export function Sidebar({ open, onToggle }: { open: boolean; onToggle: () => voi
   }, [collapsedGroups]);
 
   // ── Live risk counters (Anomaly Intelligence specific) ────────────
-  const riskCounters = useMemo(() => {
+  const [riskCounters, setRiskCounters] = useState({
+    anomalies: 0, customers: 0, branches: 0, officers: 0, insights: 0, totalAlerts: 0,
+  });
+
+  useEffect(() => {
     const buId = activeBU ? activeBU.id : null;
-    const data = getRiskData(buId);
+    const url = `/api/risk-intelligence` + (buId ? `?buId=${buId}` : "");
 
-    const activeAnomalies = data.anomalyDetections.filter(
-      (a) => a.status === "DETECTED" || a.status === "CONFIRMED" || a.status === "INVESTIGATING"
-    ).length;
+    fetch(url, { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) return;
 
-    const criticalCustomers = data.customerRiskProfiles.filter(
-      (c) => c.riskLevel === "CRITICAL"
-    ).length;
+        const activeAnomalies = (data.anomalyDetections || []).filter(
+          (a: any) => a.status === "DETECTED" || a.status === "CONFIRMED" || a.status === "INVESTIGATING"
+        ).length;
 
-    const highRiskBranches = data.branchRiskProfiles.filter(
-      (b) => b.riskLevel === "CRITICAL" || b.riskLevel === "HIGH"
-    ).length;
+        const criticalCustomers = (data.customerRiskProfiles || []).filter(
+          (c: any) => c.riskLevel === "CRITICAL"
+        ).length;
 
-    const highRiskOfficers = data.officerRiskProfiles.filter(
-      (o) => o.riskLevel === "CRITICAL" || o.riskLevel === "HIGH"
-    ).length;
+        const highRiskBranches = (data.branchRiskProfiles || []).filter(
+          (b: any) => b.riskLevel === "CRITICAL" || b.riskLevel === "HIGH"
+        ).length;
 
-    const unreadInsights = data.riskInsights.filter((i) => !i.isRead).length;
+        const highRiskOfficers = (data.officerRiskProfiles || []).filter(
+          (o: any) => o.riskLevel === "CRITICAL" || o.riskLevel === "HIGH"
+        ).length;
 
-    return {
-      anomalies: activeAnomalies,
-      customers: criticalCustomers,
-      branches: highRiskBranches,
-      officers: highRiskOfficers,
-      insights: unreadInsights,
-      totalAlerts: activeAnomalies + criticalCustomers,
-    };
+        const unreadInsights = (data.riskInsights || []).filter((i: any) => !i.isRead).length;
+
+        setRiskCounters({
+          anomalies: activeAnomalies,
+          customers: criticalCustomers,
+          branches: highRiskBranches,
+          officers: highRiskOfficers,
+          insights: unreadInsights,
+          totalAlerts: activeAnomalies + criticalCustomers,
+        });
+      })
+      .catch(() => { /* silently fail, counters stay at 0 */ });
   }, [activeBU]);
 
   const getBadgeForHref = (href: string): { count: number; color: string } | null => {

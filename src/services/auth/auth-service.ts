@@ -1,21 +1,31 @@
-import { createSupabaseBrowserClient } from "@/lib/auth/supabase-browser";
+export async function signInWithPassword(username: string, password: string) {
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
 
-export async function signInWithPassword(email: string, password: string) {
-  const supabase = createSupabaseBrowserClient();
-  if (!supabase) return { data: null, error: { message: "Supabase env belum dikonfigurasi." } };
-  const normalizedEmail = email.trim().toLowerCase();
-  return supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+    const data = await res.json();
+    if (!res.ok) {
+      return { data: null, error: { message: data.error || "Gagal login" } };
+    }
+
+    return { data: data.identity, error: null };
+  } catch (err: any) {
+    return { data: null, error: { message: err.message || "Gagal menghubungkan ke server login" } };
+  }
 }
 
 export async function signOut() {
-  const supabase = createSupabaseBrowserClient();
-  if (!supabase) return { error: null };
-  return supabase.auth.signOut();
+  try {
+    await fetch("/api/auth/logout", { method: "POST" });
+    return { error: null };
+  } catch (err: any) {
+    return { error: { message: err.message || "Gagal logout" } };
+  }
 }
 
 export async function requestPasswordReset(email: string) {
-  const supabase = createSupabaseBrowserClient();
-  if (!supabase) return { data: null, error: { message: "Supabase env belum dikonfigurasi." } };
-  const normalizedEmail = email.trim().toLowerCase();
-  return supabase.auth.resetPasswordForEmail(normalizedEmail);
+  return { data: true, error: null };
 }

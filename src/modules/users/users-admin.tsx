@@ -12,6 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AppRole } from "@/types/auth";
+import { businessUnits } from "@/lib/business-units";
+import { Trash2 } from "lucide-react";
 
 type UserItem = {
   profileId: string;
@@ -39,9 +41,9 @@ type UsersResponse = {
 
 const inviteSchema = z.object({
   fullName: z.string().trim().min(3, "Nama minimal 3 karakter"),
-  email: z.email("Email tidak valid").transform((value) => value.toLowerCase().trim()),
+  email: z.string().email("Email tidak valid").transform((value) => value.toLowerCase().trim()),
   roleCode: z.enum(["OWNER", "HEAD_AUDIT", "AUDITOR", "INVESTIGATOR", "AUDITEE", "ADMIN"]),
-  branchId: z.string().optional(),
+  companyId: z.string().optional(),
   divisionId: z.string().optional(),
 });
 
@@ -73,16 +75,12 @@ export function UsersAdmin() {
       fullName: "",
       email: "",
       roleCode: "AUDITEE",
-      branchId: "",
+      companyId: "",
       divisionId: "",
     },
   });
 
-  const selectedBranchId = useWatch({ control: inviteForm.control, name: "branchId" });
-  const divisionOptions = useMemo(() => {
-    if (!selectedBranchId) return [];
-    return branches.find((branch) => branch.id === selectedBranchId)?.divisions ?? [];
-  }, [branches, selectedBranchId]);
+  const selectedBranchId = useWatch({ control: inviteForm.control, name: "companyId" });
 
   const load = async () => {
     setLoading(true);
@@ -154,7 +152,7 @@ export function UsersAdmin() {
         fullName: parsed.fullName,
         email: parsed.email,
         roleCode: parsed.roleCode,
-        branchId: parsed.branchId || null,
+        branchId: parsed.companyId || null,
         divisionId: parsed.divisionId || null,
       }),
     });
@@ -170,27 +168,31 @@ export function UsersAdmin() {
       fullName: "",
       email: "",
       roleCode: "AUDITEE",
-      branchId: "",
+      companyId: "",
       divisionId: "",
     });
     setSubmittingInvite(false);
-    setSuccess("Undangan terkirim dan role berhasil di-assign.");
+    setSuccess("User baru berhasil ditambahkan!");
     await load();
   });
 
-  const onResendInvite = async (profileId: string) => {
+  const onDeleteUser = async (profileId: string, fullName: string) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus user '${fullName}'?`)) return;
+
     setActionId(profileId);
     setError(null);
     setSuccess(null);
-    const res = await fetch(`/api/users/${profileId}/resend-invite`, { method: "POST" });
+    const res = await fetch(`/api/users?profileId=${profileId}`, { method: "DELETE" });
+    
     if (!res.ok) {
-      const payload = (await res.json().catch(() => ({}))) as { error?: string };
       setActionId(null);
-      setError(payload.error ?? "Gagal mengirim ulang undangan.");
+      setError("Gagal menghapus user.");
       return;
     }
+
     setActionId(null);
-    setSuccess("Undangan berhasil dikirim ulang.");
+    setSuccess(`User '${fullName}' berhasil dihapus.`);
+    await load();
   };
 
   const onToggleStatus = async (profileId: string, currentStatus: UserItem["status"]) => {
@@ -227,29 +229,29 @@ export function UsersAdmin() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Invite User</CardTitle>
+          <CardTitle>Invite User Baru</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={onSubmitInvite} className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <form onSubmit={onSubmitInvite} className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <div className="space-y-1">
               <label htmlFor="invite-full-name" className="text-xs text-slate-400">
                 Nama Lengkap
               </label>
-              <Input id="invite-full-name" {...inviteForm.register("fullName")} />
+              <Input id="invite-full-name" placeholder="Nama lengkap user" {...inviteForm.register("fullName")} />
               <p className="text-xs text-rose-300">{inviteForm.formState.errors.fullName?.message}</p>
             </div>
 
             <div className="space-y-1">
               <label htmlFor="invite-email" className="text-xs text-slate-400">
-                Email
+                Email / Username Korporat
               </label>
-              <Input id="invite-email" type="email" {...inviteForm.register("email")} />
+              <Input id="invite-email" type="email" placeholder="user@auditsphere.ai" {...inviteForm.register("email")} />
               <p className="text-xs text-rose-300">{inviteForm.formState.errors.email?.message}</p>
             </div>
 
             <div className="space-y-1">
               <label htmlFor="invite-role" className="text-xs text-slate-400">
-                Role
+                Role Akses
               </label>
               <select
                 id="invite-role"
@@ -265,57 +267,28 @@ export function UsersAdmin() {
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="invite-branch" className="text-xs text-slate-400">
-                Branch
+              <label htmlFor="invite-company" className="text-xs text-slate-400">
+                Perusahaan / Unit Bisnis (Holding)
               </label>
               <select
-                id="invite-branch"
-                {...inviteForm.register("branchId")}
-                onChange={(event) => {
-                  inviteForm.setValue("branchId", event.target.value);
-                  inviteForm.setValue("divisionId", "");
-                }}
+                id="invite-company"
+                {...inviteForm.register("companyId")}
                 className="h-10 w-full rounded-lg border border-white/10 bg-black/20 px-3 text-sm text-slate-100 outline-none focus:border-cyan-300/50"
               >
                 <option value="" className="bg-slate-900 text-slate-100">
-                  Tanpa branch
+                  Seluruh Perusahaan / Holding Level
                 </option>
-                {branches.map((branch) => (
-                  <option key={branch.id} value={branch.id} className="bg-slate-900 text-slate-100">
-                    {branch.name}
+                {businessUnits.map((bu) => (
+                  <option key={bu.id} value={bu.id} className="bg-slate-900 text-slate-100">
+                    [{bu.code}] {bu.name} ({bu.sector})
                   </option>
                 ))}
               </select>
             </div>
 
-            <div className="space-y-1">
-              <label htmlFor="invite-division" className="text-xs text-slate-400">
-                Division
-              </label>
-              <select
-                id="invite-division"
-                {...inviteForm.register("divisionId")}
-                disabled={!selectedBranchId}
-                className="h-10 w-full rounded-lg border border-white/10 bg-black/20 px-3 text-sm text-slate-100 outline-none focus:border-cyan-300/50 disabled:opacity-60"
-              >
-                <option value="" className="bg-slate-900 text-slate-100">
-                  Tanpa division
-                </option>
-                {divisionOptions.map((division) => (
-                  <option
-                    key={division.id}
-                    value={division.id}
-                    className="bg-slate-900 text-slate-100"
-                  >
-                    {division.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="xl:col-span-5">
+            <div className="xl:col-span-4">
               <Button type="submit" disabled={submittingInvite}>
-                {submittingInvite ? "Mengirim Undangan..." : "Invite User"}
+                {submittingInvite ? "Mengirim Undangan..." : "Invite User Baru"}
               </Button>
             </div>
           </form>
@@ -327,8 +300,8 @@ export function UsersAdmin() {
           <CardTitle>Directory & Role Assignment</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {error ? <div className="text-sm text-rose-300">{error}</div> : null}
-          {success ? <div className="text-sm text-emerald-300">{success}</div> : null}
+          {error ? <div className="text-sm text-rose-300 bg-rose-500/10 p-2.5 rounded border border-rose-500/20">{error}</div> : null}
+          {success ? <div className="text-sm text-emerald-300 bg-emerald-500/10 p-2.5 rounded border border-emerald-500/20">{success}</div> : null}
           {loading ? (
             <div className="space-y-2">
               <Skeleton className="h-10 w-full" />
@@ -340,7 +313,7 @@ export function UsersAdmin() {
               headers={[
                 "User",
                 "Status",
-                "Scope",
+                "Perusahaan / Scope",
                 "Current Roles",
                 "Assign Role",
                 "Actions",
@@ -350,20 +323,20 @@ export function UsersAdmin() {
               {(data ?? []).map((user) => (
                 <tr key={user.profileId} className="hover:bg-white/[0.03]">
                   <TableCell>
-                    <div className="text-sm text-slate-100">{user.fullName}</div>
+                    <div className="text-sm font-semibold text-slate-100">{user.fullName}</div>
                     <div className="text-xs text-slate-400">{user.email}</div>
                   </TableCell>
                   <TableCell>
                     <Badge tone={statusTone(user.status)}>{user.status}</Badge>
                   </TableCell>
                   <TableCell className="text-xs text-slate-300">
-                    {user.branchName} / {user.divisionName}
+                    {user.branchName}
                   </TableCell>
                   <TableCell className="text-xs text-slate-300">
                     {user.roleCodes.join(", ")}
                   </TableCell>
                   <TableCell>
-                    <div className="flex min-w-[220px] items-center gap-2">
+                    <div className="flex min-w-[200px] items-center gap-2">
                       <select
                         value={draftRoles[user.profileId] ?? "AUDITEE"}
                         onChange={(event) =>
@@ -391,20 +364,10 @@ export function UsersAdmin() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex min-w-[220px] gap-2">
-                      {user.status === "INVITED" ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={actionId === user.profileId}
-                          onClick={() => onResendInvite(user.profileId)}
-                        >
-                          {actionId === user.profileId ? "Processing..." : "Resend Invite"}
-                        </Button>
-                      ) : null}
+                    <div className="flex items-center gap-2">
                       <Button
                         size="sm"
-                        variant={user.status === "SUSPENDED" ? "secondary" : "danger"}
+                        variant={user.status === "SUSPENDED" ? "secondary" : "outline"}
                         disabled={actionId === user.profileId}
                         onClick={() => onToggleStatus(user.profileId, user.status)}
                       >
@@ -413,6 +376,19 @@ export function UsersAdmin() {
                           : user.status === "SUSPENDED"
                             ? "Activate"
                             : "Suspend"}
+                      </Button>
+
+                      {/* Delete User Button */}
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        disabled={actionId === user.profileId}
+                        onClick={() => onDeleteUser(user.profileId, user.fullName)}
+                        title="Hapus User"
+                        className="bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 border-rose-500/30"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>Hapus</span>
                       </Button>
                     </div>
                   </TableCell>

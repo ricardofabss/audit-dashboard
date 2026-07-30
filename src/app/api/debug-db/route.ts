@@ -1,30 +1,24 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { db } from "@/lib/db";
 
-const prisma = new PrismaClient();
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const reports = await prisma.monthlyReport.findMany();
-    const bu = await prisma.granularMonthlyBUReport.findMany();
-    
-    // Convert BigInt to string before returning
-    const safeBuSample = bu.slice(0, 2).map(r => {
-      const obj = { ...r };
-      obj.aumAktif = r.aumAktif.toString() as any;
-      obj.aumAudit = r.aumAudit.toString() as any;
-      obj.aumBelumAudit = r.aumBelumAudit.toString() as any;
-      return obj;
-    });
+    const eventsCount = await (db as any).contractLifecycleEvent.count();
+    const risksCount = await (db as any).riskRegister.count();
+    const auditsCount = await (db as any).auditProject.count();
 
-    return NextResponse.json({ 
-      reportsCount: reports.length, 
-      reports, 
-      buCount: bu.length,
-      buSample: safeBuSample
+    return NextResponse.json({
+      status: "online",
+      database: "connected",
+      records: {
+        contractLifecycleEvent: eventsCount,
+        riskRegister: risksCount,
+        auditProject: auditsCount,
+      },
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ status: "error", message: error.message }, { status: 500 });
   }
 }

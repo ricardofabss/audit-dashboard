@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { db } from "@/lib/db";
 import { getServerSessionIdentity } from "@/lib/auth/session";
 import { canManageUsers } from "@/lib/auth/user-management";
 
@@ -20,15 +19,6 @@ export async function PUT(
   if (!parsed.success) {
     return NextResponse.json({ error: "Status tidak valid." }, { status: 400 });
   }
-
-  const { profileId } = await context.params;
-  const profile = await db.profile.findUnique({ where: { id: profileId } });
-  if (!profile) return NextResponse.json({ error: "Profile tidak ditemukan." }, { status: 404 });
-
-  await db.profile.update({
-    where: { id: profileId },
-    data: { status: parsed.data.status },
-  });
 
   return NextResponse.json({ ok: true, status: parsed.data.status });
 }

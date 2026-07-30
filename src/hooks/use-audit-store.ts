@@ -79,6 +79,8 @@ type AuditStore = {
   addActivity: (activity: Omit<Activity, "time">) => Promise<void>;
   
   deleteDocument: (id: string) => void;
+  deleteAudit: (id: string) => Promise<void>;
+  updateAudit: (id: string, updatedFields: Partial<Audit>) => Promise<void>;
   updateFindingProgress: (id: string, progress: number) => Promise<void>;
   updateFindingStatus: (id: string, status: Finding["status"]) => Promise<void>;
   approveFinding: (id: string) => Promise<void>;
@@ -331,6 +333,42 @@ export const useAuditStore = create<AuditStore>()(
         set((state) => ({
           audits: state.audits.map((a) => (a.id === id ? { ...a, progress } : a)),
         })),
+
+      deleteAudit: async (id) => {
+        const auditToDelete = get().audits.find((a) => a.id === id);
+        set((state) => ({
+          audits: state.audits.filter((a) => a.id !== id),
+        }));
+        try {
+          await fetch(`/api/audits?id=${encodeURIComponent(id)}`, {
+            method: "DELETE",
+          });
+          const newActivity: Activity = {
+            title: "Audit Assignment Deleted",
+            detail: `Audit "${auditToDelete?.name || id}" has been removed.`,
+            time: "Just now",
+            tone: "red",
+          };
+          await get().addActivity(newActivity);
+        } catch (error) {
+          console.error("Failed to delete audit:", error);
+        }
+      },
+
+      updateAudit: async (id, updatedFields) => {
+        set((state) => ({
+          audits: state.audits.map((a) => (a.id === id ? { ...a, ...updatedFields } : a)),
+        }));
+        try {
+          await fetch("/api/audits", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, ...updatedFields }),
+          });
+        } catch (error) {
+          console.error("Failed to update audit:", error);
+        }
+      },
 
       resetAll: () =>
         set({

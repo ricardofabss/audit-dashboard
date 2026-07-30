@@ -3,11 +3,25 @@ import { db } from "@/lib/db";
 
 export async function GET() {
   try {
-    const risks = await db.riskRegister.findMany({
+    let risks = await (db as any).riskRegister.findMany({
       orderBy: { createdAt: "desc" },
     });
     
-    const formattedRisks = risks.map((r) => ({
+    // Auto-seed database if empty
+    if (risks.length === 0) {
+      const initialRisks = [
+        { riskId: "RSK-01", name: "Privileged access misuse", category: "Technology", likelihood: 5, impact: 5, owner: "CISO Office", mitigation: 62 },
+        { riskId: "RSK-02", name: "Fictitious vendor scheme", category: "Procurement", likelihood: 4, impact: 5, owner: "Finance Ops", mitigation: 41 },
+        { riskId: "RSK-03", name: "Regulatory filing delay", category: "Compliance", likelihood: 3, impact: 4, owner: "Legal", mitigation: 72 },
+        { riskId: "RSK-04", name: "Evidence retention gap", category: "Audit Quality", likelihood: 3, impact: 3, owner: "Internal Audit", mitigation: 55 },
+      ];
+      for (const item of initialRisks) {
+        await (db as any).riskRegister.create({ data: item }).catch(() => {});
+      }
+      risks = await (db as any).riskRegister.findMany({ orderBy: { createdAt: "desc" } });
+    }
+
+    const formattedRisks = risks.map((r: any) => ({
       id: r.riskId,
       name: r.name,
       category: r.category,
@@ -28,7 +42,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { id, name, category, likelihood, impact, owner, mitigation } = body;
     
-    const newRisk = await db.riskRegister.create({
+    const newRisk = await (db as any).riskRegister.create({
       data: {
         riskId: id,
         name,
@@ -36,7 +50,7 @@ export async function POST(request: Request) {
         likelihood,
         impact,
         owner,
-        mitigation,
+        mitigation: mitigation || 0,
       },
     });
 

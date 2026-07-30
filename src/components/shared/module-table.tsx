@@ -14,7 +14,7 @@ export function ModuleTable({
         <thead className="bg-black/20">
           <tr>
             {headers.map((header) => (
-              <th key={header} className="border-b border-white/10 px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
+              <th key={header} className="border-b border-white/10 px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.08em] text-slate-400 whitespace-nowrap">
                 {header}
               </th>
             ))}

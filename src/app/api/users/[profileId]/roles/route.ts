@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { getServerSessionIdentity } from "@/lib/auth/session";
-import { syncIdentityToSupabaseMetadata } from "@/lib/auth/identity-sync";
 import { canManageUsers } from "@/lib/auth/user-management";
 import type { AppRole } from "@/types/auth";
+import { PRESET_USERS } from "@/app/api/auth/login/route";
 
 const allowedRoles: AppRole[] = [
   "OWNER",
@@ -37,36 +36,13 @@ export async function PUT(
     return NextResponse.json({ error: "Minimal 1 role wajib dipilih." }, { status: 400 });
   }
 
-  const profile = await db.profile.findUnique({
-    where: { id: profileId },
-    select: { id: true, authUserId: true, email: true },
-  });
-  if (!profile) {
-    return NextResponse.json({ error: "Profile tidak ditemukan." }, { status: 404 });
+  const user = PRESET_USERS.find(
+    (u) => u.identity.profileId === profileId || u.identity.userId === profileId
+  );
+
+  if (user) {
+    user.identity.roles = roleCodes;
   }
-
-  const roles = await db.role.findMany({
-    where: { code: { in: roleCodes }, deletedAt: null },
-    select: { id: true, code: true },
-  });
-  if (roles.length !== roleCodes.length) {
-    return NextResponse.json({ error: "Ada role yang tidak valid." }, { status: 400 });
-  }
-
-  await db.$transaction(async (tx) => {
-    await tx.profileRole.deleteMany({ where: { profileId } });
-    await tx.profileRole.createMany({
-      data: roles.map((role) => ({
-        profileId,
-        roleId: role.id,
-      })),
-    });
-  });
-
-  await syncIdentityToSupabaseMetadata({
-    authUserId: profile.authUserId,
-    email: profile.email,
-  });
 
   return NextResponse.json({ ok: true, roleCodes });
 }

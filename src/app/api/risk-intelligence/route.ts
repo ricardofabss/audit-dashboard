@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 import { db } from "@/lib/db";
 import { runAnomalyDetection } from "@/lib/engines/anomaly-engine";
-import { getRiskData, getMockDataForBU, getConsolidatedMockData, clearMockCache } from "@/lib/risk-mock-data";
+import { getSectorForBU } from "@/lib/business-units";
 import type {
   AnomalyRule,
   AnomalyDetection,
@@ -17,7 +17,14 @@ import type {
   RiskLevel,
   AnomalyStatus,
   RiskMockDataSet,
+  SectorType,
 } from "@/types/risk-intelligence";
+
+// ─── In-Memory Cache ─────────────────────────────────────────────────
+// Cache computed results for 5 minutes to avoid recomputing on every page load.
+// Key: buId (or "__ALL__" for consolidated). Value: { data, timestamp }.
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const resultCache = new Map<string, { data: RiskMockDataSet; timestamp: number }>();
 
 function riskLevelFromScore(score: number): RiskLevel {
   if (score >= 80) return "CRITICAL";
@@ -142,30 +149,87 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const buId = searchParams.get("buId");
+    const forceRefresh = searchParams.get("refresh") === "true";
     
-    console.log(`[API risk-intelligence] Received request. url=${request.url}, buId=${buId}`);
-    // Force clear cache in development to fix any lingering poisoned state
-    if (process.env.NODE_ENV === "development") {
-      clearMockCache();
+    // Resolve sector from buId for proper filtering
+    const buSector: SectorType | null = buId ? (getSectorForBU(buId) || null) : null;
+    const cacheKey = buId || "__ALL__";
+    
+    console.log(`[API risk-intelligence] Received request. buId=${buId}, resolvedSector=${buSector}`);
+    const t0 = Date.now();
+
+    // ─── Check Cache ──────────────────────────────────────────────────
+    if (!forceRefresh) {
+      const cached = resultCache.get(cacheKey);
+      if (cached && (Date.now() - cached.timestamp) < CACHE_TTL_MS) {
+        console.log(`[PERF] Cache HIT for key="${cacheKey}". Age: ${Math.round((Date.now() - cached.timestamp) / 1000)}s. Total: ${Date.now() - t0}ms`);
+        return NextResponse.json(cached.data);
+      }
     }
-    const mockDataSet = getRiskData(buId);
-    const rules = mockDataSet.anomalyRules;
+    console.log(`[PERF] Cache MISS for key="${cacheKey}". Computing...`);
 
-    // Query database events
-    // We no longer skip non-pawnshop sectors if they have database records.
-    // The query below will fetch them.
-
-    // Fetch live events from database
-    const dbEvents = await db.contractLifecycleEvent.findMany({
-      where: {
-        deletedAt: null,
-        ...(buId ? { businessUnit: buId } : {}),
-      },
-      orderBy: [
-        { eventDate: "desc" },
-      ],
-      take: 20000, // increased limit for otomotif data
+    // ─── Load anomaly rules from database ────────────────────────────
+    const dbRules = await db.anomalyRuleConfig.findMany({
+      where: { isActive: true },
+      orderBy: { code: "asc" },
     });
+
+    const rules: AnomalyRule[] = dbRules.map((r) => ({
+      id: r.id,
+      code: r.code as any,
+      sector: r.sector as any,
+      name: r.name,
+      nameId: r.nameId,
+      description: r.description,
+      descriptionId: r.descriptionId,
+      riskWeight: r.riskWeight,
+      thresholds: r.thresholds as any,
+      isActive: r.isActive,
+      category: r.category as any,
+      createdAt: r.createdAt.toISOString().split("T")[0],
+    }));
+
+    // Fetch live events from database with flexible Business Unit matching
+    let dbEvents: any[] = [];
+    try {
+      let buWhere: any = { deletedAt: null };
+      if (buId) {
+        const buVariants = [buId, buId.toLowerCase(), buId.toUpperCase()];
+        if (buId.includes("pg") || buId.includes("gmn") || buId.includes("gadai")) {
+          buVariants.push("GADAI_MAS", "bu-pg-gmn", "PG-GMN", "PG-GMS", "Pergadaian");
+        }
+        if (buId.includes("ot") || buId.includes("ysa") || buId.includes("gma") || buId.includes("dsa")) {
+          buVariants.push("OTOMOTIF", "bu-ot-ysa", "OT-YSA", "bu-ot-gma", "OT-GMA", "bu-ot-dsa", "OT-DSA");
+        }
+        if (buId.includes("mf") || buId.includes("smf")) {
+          buVariants.push("MULTIFINANCE", "bu-mf-smf", "MF-SMF");
+        }
+
+        buWhere = {
+          deletedAt: null,
+          OR: buVariants.map((v) => ({ businessUnit: { equals: v, mode: "insensitive" } })),
+        };
+      }
+
+      dbEvents = await db.contractLifecycleEvent.findMany({
+        where: buWhere,
+        orderBy: [{ eventDate: "desc" }],
+        take: 20000,
+      });
+      console.log(`[PERF] DB query: ${Date.now() - t0}ms, rows: ${dbEvents.length}`);
+
+      // NOTE: Removed dangerous fallback that loaded ALL events across all sectors.
+      // If no events match the BU filter, we return empty data for that BU.
+      if (dbEvents.length === 0 && buId) {
+        console.log(`[API risk-intelligence] No events found for buId=${buId}. Returning empty dataset for this BU.`);
+      }
+    } catch (dbError) {
+      console.error("[API risk-intelligence] Database query error:", dbError);
+      return NextResponse.json(
+        { error: "Database connection error", details: (dbError as Error).message },
+        { status: 500 }
+      );
+    }
 
     if (dbEvents.length === 0) {
       // If DB is completely empty (e.g. before initial import), return empty data
@@ -245,6 +309,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    console.log(`[PERF] Transform to transactions: ${Date.now() - t0}ms`);
     // Debug: log sample transaction metadata for the first 3 transactions
     console.log(`[API risk-intelligence] buId=${buId}, dbEvents=${dbEvents.length}, transactions=${transactions.length}`);
     if (transactions.length > 0) {
@@ -256,12 +321,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Run the anomaly detection engine on real transactions
-    // For OTOMOTIF rules, we inline the detection to bypass any HMR caching issues
-    const otomotifRuleCodes = new Set(["O01", "O02", "O04", "O05"]);
-    const otomotifRules = rules.filter(r => otomotifRuleCodes.has(r.code));
-    const nonOtomotifRules = rules.filter(r => !otomotifRuleCodes.has(r.code));
+    // Filter rules by sector when a specific BU is selected to prevent cross-sector contamination
+    const sectorFilteredRules = buSector
+      ? rules.filter(r => r.sector === buSector)
+      : rules; // consolidated mode: run all rules
     
-    // Run standard rules via imported engine
+    const otomotifRuleCodes = new Set(["O01", "O02", "O04", "O05"]);
+    const otomotifRules = sectorFilteredRules.filter(r => otomotifRuleCodes.has(r.code));
+    const nonOtomotifRules = sectorFilteredRules.filter(r => !otomotifRuleCodes.has(r.code));
+    
+    // Run standard rules via imported engine (only sector-appropriate rules)
     const rawDetections = runAnomalyDetection(transactions, nonOtomotifRules);
     
     // ── Inline OTOMOTIF detection ──────────────────────────────────
@@ -273,6 +342,7 @@ export async function GET(request: NextRequest) {
     };
     const inlineDetections: InlineDetection[] = [];
 
+    // Only run inline Otomotif detection if no sector filter or sector is OTOMOTIF
     for (const rule of otomotifRules) {
       if (!rule.isActive) continue;
 
@@ -414,7 +484,8 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    console.log(`[API risk-intelligence] rawDetections count=${rawDetections.length} (inline otomotif: ${inlineDetections.length}), rules: ${rules.map(r => r.code).join(',')}`);
+    console.log(`[PERF] Anomaly detection engine: ${Date.now() - t0}ms`);
+    console.log(`[API risk-intelligence] rawDetections count=${rawDetections.length} (inline otomotif: ${inlineDetections.length}), sectorFilteredRules: ${sectorFilteredRules.map(r => r.code).join(',')}, allRules: ${rules.length}`);
 
     // Override the generic detection dates with the transaction event date for realism
     const detections: AnomalyDetection[] = rawDetections.map(d => {
@@ -429,7 +500,7 @@ export async function GET(request: NextRequest) {
         outletCode: matchTx ? matchTx.outletCode : (d.metadata?.outletCode as string || d.outletCode),
         outletName: matchTx ? matchTx.outletName : (d.entityType === "BRANCH" ? d.entityName : (d.metadata?.branchName as string || "")),
         branchName: matchTx ? matchTx.branchName : (d.metadata?.branchName as string || ""),
-        businessUnitId: buId || "bu-pg-gmn",
+        businessUnitId: buId || d.businessUnitId || "",
       };
     });
 
@@ -445,8 +516,8 @@ export async function GET(request: NextRequest) {
       
       customerRiskProfiles.push({
         id: `CUST-PROF-${customerId}`,
-        sector: (buId && buId.includes("ot")) ? "OTOMOTIF" : "PERGADAIAN",
-        businessUnitId: buId || "bu-pg-gmn",
+        sector: cDetections[0]?.sector || buSector || "PERGADAIAN",
+        businessUnitId: buId || cDetections[0]?.businessUnitId || "",
         customerId,
         customerName: cDetections[0].entityName,
         cifNumber: customerId,
@@ -463,6 +534,12 @@ export async function GET(request: NextRequest) {
             occurrences: 1,
             weightedScore: d.riskScore,
             lastDetected: d.detectedAt,
+            status: d.status,
+            contractNo: d.metadata?.contractNo || "-",
+            statusPerpanjangan: d.metadata?.statusPerpanjangan || "Aktif",
+            loanAmount: d.metadata?.loanAmount || 0,
+            agingDays: d.metadata?.agingDays || 0,
+            description: d.description || "",
           })),
           totalRawScore: cDetections.reduce((sum, d) => sum + d.riskScore, 0),
           normalizedScore: totalScore,
@@ -505,10 +582,12 @@ export async function GET(request: NextRequest) {
         ? Number((durations.reduce((sum, d) => sum + d, 0) / durations.length).toFixed(1))
         : 0;
 
+      // Determine sector from detections at this outlet, or from BU, or from rule sector
+      const outletSector = oDetections.length > 0 ? oDetections[0].sector : (buSector || "PERGADAIAN");
       branchRiskProfiles.push({
         id: `BRANCH-PROF-${outletCode}`,
-        sector: (buId && buId.includes("ot")) ? "OTOMOTIF" : "PERGADAIAN",
-        businessUnitId: buId || "bu-pg-gmn",
+        sector: outletSector,
+        businessUnitId: buId || (oDetections.length > 0 ? oDetections[0].businessUnitId : ""),
         outletCode,
         outletName: sampleTx.outletName,
         branchName: sampleTx.branchName,
@@ -555,8 +634,8 @@ export async function GET(request: NextRequest) {
       
       officerRiskProfiles.push({
         id: `OFF-PROF-${officerId}`,
-        sector: (buId && buId.includes("ot")) ? "OTOMOTIF" : "PERGADAIAN",
-        businessUnitId: buId || "bu-pg-gmn",
+        sector: sampleDetection.sector || buSector || "PERGADAIAN",
+        businessUnitId: buId || sampleDetection.businessUnitId || "",
         officerId,
         officerName: sampleDetection.entityName,
         position: officerId.startsWith("SALES") ? "Salesman" : (officerId.startsWith("MECH") ? "Mechanic" : "Officer"),
@@ -708,8 +787,8 @@ export async function GET(request: NextRequest) {
       const category = d.riskScore >= 80 ? "ALERT" : "TREND";
       return {
         id: `INSIGHT-${d.id}`,
-        sector: "PERGADAIAN",
-        businessUnitId: buId || "bu-pg-gmn",
+        sector: d.sector || buSector || "PERGADAIAN",
+        businessUnitId: buId || d.businessUnitId || "",
         entityType: d.entityType,
         entityId: d.entityId,
         entityName: d.entityName,
@@ -740,6 +819,10 @@ export async function GET(request: NextRequest) {
       console.log(`[API] Consolidated mode (Real Data only)`);
     }
 
+    // ─── Store in Cache ───────────────────────────────────────────────
+    resultCache.set(cacheKey, { data: responsePayload, timestamp: Date.now() });
+
+    console.log(`[PERF] Total API time: ${Date.now() - t0}ms (COMPUTED & CACHED as "${cacheKey}")`);
     console.log(`[API risk-intelligence] Returning response for buId=${buId}. rulesCount=${responsePayload.anomalyRules.length}, detectionsCount=${responsePayload.anomalyDetections.length}`);
     return NextResponse.json(responsePayload);
   } catch (error: any) {

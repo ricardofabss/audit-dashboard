@@ -434,3 +434,21 @@ model GranularMonthlyBUReport {
   @@index([periode])
   @@map("granular_monthly_bu_reports")
 }
+
+model AnomalyRuleConfig {
+  id            String   @id @default(uuid()) @db.Uuid
+  code          String   @unique
+  sector        String
+  name          String
+  nameId        String   @map("name_id")
+  description   String
+  descriptionId String   @map("description_id")
+  riskWeight    Int      @map("risk_weight")
+  thresholds    Json
+  isActive      Boolean  @default(true) @map("is_active")
+  category      String
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("anomaly_rule_configs")
+}
