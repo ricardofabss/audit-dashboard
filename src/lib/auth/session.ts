@@ -13,27 +13,6 @@ export async function getServerSessionIdentity(): Promise<SessionIdentity | null
     // Cookie read fallback
   }
 
-  // Fallback default admin identity
-  return {
-    userId: "user-admin-000",
-    email: "admin@auditsphere.ai",
-    profileId: "prof-admin-000",
-    roles: ["ADMIN", "OWNER"],
-    permissions: [
-      "dashboard.read",
-      "audit.read",
-      "audit.execute",
-      "findings.read",
-      "findings.manage",
-      "wbs.read",
-      "investigation.read",
-      "risk.read",
-      "compliance.read",
-      "followup.read",
-      "users.manage",
-      "settings.manage",
-    ],
-    branchId: null,
-    divisionId: "DIV-ADMIN-HOLDING",
-  };
+  // Strictly require valid session cookie (No fallback for production security)
+  return null;
 }
